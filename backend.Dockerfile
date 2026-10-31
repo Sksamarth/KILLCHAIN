@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --crea
 COPY backend backend
 COPY rules rules
 COPY tests tests
+COPY pytest.ini .
 COPY docs docs
 USER analyst
 CMD ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

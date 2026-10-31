@@ -17,7 +17,7 @@ import psutil
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from backend.rules import ROOT, RuleEngine
+from backend.rules import ROOT, RuleEngine, TIMESTAMP
 from backend.store import connect
 
 SCHEMA = pa.schema([(k, pa.int64() if k in {'ts','first_ts','last_ts','bytes','count','stage_order','weight','offset','window','threshold'} else pa.string()) for k in (
@@ -35,15 +35,19 @@ def ranges(path, size=64*1024*1024):
 
 
 def scan_range(task):
-    file, start, end, _, _, out, rules = task
+    file, start, end, expected_size, expected_mtime, out, rules = task
     engine = RuleEngine(Path(rules))
-    rows, lines, rejected = [], 0, 0
+    rows, lines, rejected, unsupported = [], 0, 0, 0
     writer = pq.ParquetWriter(out, SCHEMA, compression='zstd')
     try:
         with open(file, 'rb') as stream:
+            snapshot=os.fstat(stream.fileno())
+            if (snapshot.st_size,snapshot.st_mtime_ns)!=(expected_size,expected_mtime): raise ValueError('Log changed during scan; retry against a stable snapshot')
             if start:
                 stream.seek(start-1)
-                if stream.read(1) != b'\n': stream.readline(MAX_LINE+1)
+                if stream.read(1) != b'\n':
+                    skipped=stream.readline(MAX_LINE+1)
+                    while skipped and not skipped.endswith(b'\n'): skipped=stream.readline(MAX_LINE+1)
             while stream.tell() < end:
                 offset = stream.tell()
                 line = stream.readline(MAX_LINE+1)
@@ -53,12 +57,17 @@ def scan_range(task):
                     rejected += 1
                     while line and not line.endswith(b'\n'): line = stream.readline(MAX_LINE+1)
                     continue
+                if not TIMESTAMP.search(line): unsupported+=1;continue
                 rows.extend(engine.candidates(line, file, offset))
                 if len(rows) >= 8192:
                     writer.write_table(pa.Table.from_pylist(rows, schema=SCHEMA)); rows.clear()
             if rows: writer.write_table(pa.Table.from_pylist(rows, schema=SCHEMA))
+            snapshot=os.fstat(stream.fileno())
+            if (snapshot.st_size,snapshot.st_mtime_ns)!=(expected_size,expected_mtime): raise ValueError('Log changed during scan; retry against a stable snapshot')
     finally: writer.close()
-    return {'parquet': out, 'lines': lines, 'oversized_lines': rejected, 'bytes': end-start}
+    result={'parquet': out, 'lines': lines, 'oversized_lines': rejected, 'unsupported_lines':unsupported,'bytes': end-start}
+    Path(out+'.json').write_text(json.dumps(result))
+    return result
 
 
 def materialize(db, files):
@@ -88,6 +97,12 @@ def materialize(db, files):
             QUALIFY row_number() OVER (PARTITION BY c.group_key,e.episode ORDER BY c.ts,c.file,c.offset)=1''', [rule_id])
     db.execute('CREATE INDEX IF NOT EXISTS alerts_time ON alerts(ts)')
     db.execute('CREATE INDEX IF NOT EXISTS alerts_id ON alerts(alert_id)')
+    db.execute('''CREATE OR REPLACE TABLE alert_evidence AS
+        SELECT a.alert_id,c.file,c."offset",c.ts,c.technique FROM alerts a JOIN candidates c
+        ON a.rule_id=c.rule_id AND a.group_key=c.group_key
+        AND ((a.kind='match' AND a.file=c.file AND a."offset"=c."offset")
+             OR (a.kind!='match' AND c.ts BETWEEN a.first_ts AND a.last_ts))''')
+    db.execute('CREATE INDEX IF NOT EXISTS evidence_offset ON alert_evidence("offset")')
 
 
 def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*1024, memory=None):
@@ -97,7 +112,7 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
     engine = RuleEngine()
     chunks = list(ranges(path, chunk_size))
     if not chunks: raise ValueError('No supported, nonempty text log files found')
-    signature = hashlib.sha256(json.dumps(['scanner-v1',chunks,engine.fingerprint]).encode()).hexdigest()[:24]
+    signature = hashlib.sha256(json.dumps(['scanner-v3',chunks,engine.fingerprint]).encode()).hexdigest()[:24]
     with connect(db_path) as db:
         dbfile = Path(db.execute('PRAGMA database_list').fetchone()[2])
         done = dict(db.execute('SELECT chunk_id,parquet FROM chunks WHERE run_id=?',[signature]).fetchall())
@@ -135,11 +150,14 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
             if progress: progress(state)
     # Only publish a completed generation. Readers see the previous complete result during extraction.
     from backend.correlate import build
+    source_stats=[json.loads(Path(p+'.json').read_text()) for p in outputs]
     with connect(db_path) as db:
         db.execute('BEGIN TRANSACTION')
         try:
             materialize(db, outputs)
             stats = dict(running=False,percent=100,mbps=total/1e6/max(time.monotonic()-started,.001),seconds=time.monotonic()-started,peak_gb=peak/1e9,bytes=total,files=len({c[0] for c in chunks}),run_id=signature)
+            stats.update({k:sum(s[k] for s in source_stats) for k in ('lines','unsupported_lines','oversized_lines')})
+            stats['synthetic_benchmark'] = os.environ.get('KC_SYNTHETIC_BENCHMARK')=='1'
             build(db, stats)
             stats['peak_gb'] = max(peak,memory[0] if memory else peak)/1e9
             stats['peak_scope'] = 'sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement'
@@ -182,10 +200,13 @@ def main():
         url=os.environ.get('SCAN_API_URL','http://127.0.0.1:8000')
         headers={'Authorization':'Bearer '+os.environ['API_TOKEN']} if os.environ.get('API_TOKEN') else {}
         try:
-            available=requests.get(url+'/health',timeout=2).ok
-        except requests.RequestException: available=False
+            check=requests.get(url+'/health',timeout=2)
+            available=check.ok and check.json().get('service')=='killchain-xdr'
+        except (requests.RequestException, ValueError): available=False
         if available:
-            response=requests.post(url+'/scan',json={'path':args.path},headers=headers,timeout=10)
+            payload={'path':args.path}
+            if args.workers:payload['workers']=args.workers
+            response=requests.post(url+'/scan',json=payload,headers=headers,timeout=10)
             response.raise_for_status()
             while True:
                 response=requests.get(url+'/scan/status',headers=headers,timeout=30);response.raise_for_status();state=response.json()
@@ -211,6 +232,7 @@ def main():
                 output.write(block); remaining -= len(block)
             output.write(b'\n')
         args.path = str(dest)
+        os.environ['KC_SYNTHETIC_BENCHMARK']='1'
         print('SYNTHETIC REPEATED INPUT: no accuracy claims apply.', flush=True)
     print(json.dumps(run(args.path, workers=args.workers, progress=lambda s: print(json.dumps(s),flush=True)),indent=2))
 

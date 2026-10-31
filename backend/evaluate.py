@@ -13,15 +13,16 @@ from pathlib import Path
 import requests
 
 
-def score(paths, truth):
+def score(paths, truth, evidence=None):
     found=correct=parent_correct=total=rebuilt=0
     matched_incidents=set(); breakdown=[]
     for attack in truth['attacks']:
         ordered=[]; detail=[]
         for step in attack['steps']:
             total+=1
+            linked={r['alert_id'] for r in (evidence or {}).get((step['file'],step['offset']),[])}
             hits=[(p,i,e) for p in paths for i,e in enumerate(p['timeline'])
-                  if Path(e['file']).name==Path(step['file']).name and e['offset']==step['offset']]
+                  if (e.get('alert_id') in linked if evidence is not None else Path(e['file']).name==Path(step['file']).name and e['offset']==step['offset'])]
             hit=next((h for h in hits if h[2]['tech']==step['technique']),hits[0] if hits else None)
             if hit:
                 p,i,e=hit; found+=1; correct+=e['tech']==step['technique']; parent_correct+=e['tech'].split('.')[0]==step['technique'].split('.')[0]
@@ -52,8 +53,16 @@ def main():
     result={'stats':get('/stats'),'p50_ms':statistics.median(latency) if latency else None,'p95_ms':sorted(latency)[max(0,int(len(latency)*.95+.999)-1)] if latency else None}
     if not Path(args.truth).exists():
         result.update(accuracy_status='NOT MEASURED: no ground truth supplied',great_gate='UNVERIFIED');print(json.dumps(result,indent=2));return 2
-    result.update(score(paths,json.loads(Path(args.truth).read_text())))
-    result['great_gate']='PASS' if (result['detection'] is not None and result['detection']>.90 and result['labels']>.85 and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.10 and result['p95_ms']<500 and result['stats'].get('bytes',0)>=50_000_000_000 and result['stats']['seconds']<3600 and 0<result['stats'].get('cgroup_peak_bytes',0)<8_000_000_000) else 'FAIL OR UNVERIFIED'
+    truth=json.loads(Path(args.truth).read_text())
+    if not truth.get('attacks') or any(not a.get('steps') for a in truth['attacks']): raise ValueError('Ground truth must contain nonempty attacks and ordered steps')
+    from urllib.parse import urlencode
+    evidence={}
+    for attack in truth['attacks']:
+        for step in attack['steps']:
+            key=(step['file'],step['offset'])
+            if key not in evidence: evidence[key]=get('/evidence?'+urlencode(dict(file=key[0],offset=key[1])))
+    result.update(score(paths,truth,evidence))
+    result['great_gate']='PASS' if (result['detection'] is not None and result['detection']>.90 and result['labels']>.85 and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.10 and result['p95_ms']<500 and not result['stats'].get('synthetic_benchmark',False) and result['stats'].get('bytes',0)>=50_000_000_000 and result['stats']['seconds']<3600 and 0<(result['stats'].get('cgroup_peak_bytes') or 0)<8_000_000_000) else 'FAIL OR UNVERIFIED'
     print(json.dumps(result,indent=2));return 0 if result['great_gate']=='PASS' else 1
 
 

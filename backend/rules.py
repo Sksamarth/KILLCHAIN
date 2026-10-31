@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 STAGES = ['Initial Attempts', 'Persistent Foothold', 'Exploration', 'Propagation', 'Exfiltration & Impact']
 NETWORKS = [ipaddress.ip_network(n) for n in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '169.254.0.0/16', '::1/128', 'fc00::/7', 'fe80::/10')]
 KV = re.compile(rb'(\w+)=(?:"([^"\r\n]*)"|([^\s]+))')
+IDENTITY = re.compile(rb'(?:^| )(srcip|dstip|user|sentbyte)=(?:"([^"\r\n]*)"|([^\s]+))')
+TIMESTAMP = re.compile(rb'(?:^| )eventtime=(\d{10})\d{9}(?:\s|$)')
 ALIASES = {'srcip': 'src_ip', 'dstip': 'dst_ip', 'dstport': 'dst_port', 'sentbyte': 'bytes'}
 
 
@@ -67,14 +69,21 @@ class RuleEngine:
         for s in seq['sequences']:
             if not set(s['steps']) <= ids: raise ValueError('Sequence references unknown rule')
         self.fingerprint = hashlib.sha256(self.path.read_bytes()).hexdigest()
+        self.port_hints = {}
+        for r in self.rules:
+            expression = r.get('where',{}).get('dst_port','')
+            if str(expression).startswith(('eq:','in:')):
+                self.port_hints[r['id']] = [b'dstport='+p.encode()+b' ' for p in expression.split(':',1)[1].split(',')]
 
     def candidates(self, line, file, offset):
-        matches = [(r, p.search(line)) for r, literal, p in self.compiled if literal in line]
+        matches = [(r, p.search(line)) for r, literal, p in self.compiled if literal in line
+                   and (r['id'] not in self.port_hints or any(h in line for h in self.port_hints[r['id']]))]
         matches = [(r, m) for r, m in matches if m]
         if not matches: return
-        values = {k.decode(): (a or b).decode('utf-8', 'replace') for k, a, b in KV.findall(line)}
-        try: ts = int(values['eventtime']) // 1_000_000_000
-        except (KeyError, ValueError): return
+        stamp = TIMESTAMP.search(line)
+        if not stamp: return
+        ts = int(stamp[1])
+        values = {k.decode(): (a or b).decode('utf-8', 'replace') for k, a, b in IDENTITY.findall(line)}
         base = {ALIASES.get(k, k): v for k, v in values.items()}
         for r, m in matches:
             fields = dict(base)

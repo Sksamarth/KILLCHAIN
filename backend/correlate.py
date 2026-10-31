@@ -117,5 +117,6 @@ def build(db, stats):
     overview=dict(totals=dict(incidents=len(active),incidents_critical=sum(i['score']>=75 for i in active),alerts=len(alerts),
                       alerts_critical=sum(a['weight']*10>=75 for a in alerts),assets=len(assets),assets_risky=sum(a['score']>=75 for a in assets.values()),
                       users=len({a['user'] for a in alerts if a['user']}),users_risky=len(risky_users),suppressed=len(incidents)-len(active)),
-                  stages=stages,tactics=list(tactics.values()),incidents=incidents,assets=sorted(assets.values(),key=lambda a:-a['score']),scan=stats)
+                  stages=stages,tactics=list(tactics.values()),incidents=active[:100]+[i for i in incidents if i['status']=='suppressed'][:100],assets=sorted(assets.values(),key=lambda a:-a['score'])[:100],scan=stats,
+                  limits=dict(incidents_per_status=100,assets=100))
     db.execute('INSERT OR REPLACE INTO cache VALUES (?,?)',['overview',json.dumps(overview)])

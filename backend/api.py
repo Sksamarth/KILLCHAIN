@@ -49,7 +49,7 @@ def cached(key, fallback):
 def health():
     RuleEngine()
     with connect() as db: db.execute('SELECT 1')
-    return {'status':'ok'}
+    return {'status':'ok','service':'killchain-xdr'}
 
 
 @app.get('/overview')
@@ -64,10 +64,13 @@ def stats(): return cached('stats',{})
 
 
 @app.get('/incidents')
-def incidents(status: str = Query('active',pattern='^(active|suppressed|all)$'),offset: int = Query(0,ge=0),limit: int = Query(50,ge=1,le=500)):
+def incidents(status: str = Query('active',pattern='^(active|suppressed|all)$'),offset: int = Query(0,ge=0),limit: int = Query(50,ge=1,le=500),search: str=Query('',max_length=200)):
     with connect() as db:
-        where = '' if status=='all' else 'WHERE status=?'
+        where = 'WHERE true' if status=='all' else 'WHERE status=?'
         args = [] if status=='all' else [status]
+        if search:
+            where += " AND (contains(lower(json_extract_string(path_json,'$.name')),lower(?)) OR contains(json_extract_string(path_json,'$.ips'),?))"
+            args += [search,search]
         rows=db.execute(f'SELECT path_json FROM incident_paths {where} ORDER BY risk DESC,incident_id LIMIT ? OFFSET ?',args+[limit,offset]).fetchall()
     return [{k:v for k,v in json.loads(row[0]).items() if k not in {'nodes','edges','timeline','next_hops','report'}} for row in rows]
 
@@ -92,6 +95,7 @@ def alerts(incident_id: str,offset: int=Query(0,ge=0),limit: int=Query(100,ge=1,
 
 class ScanRequest(BaseModel):
     path: str = Field(default='/data',min_length=1,max_length=2048)
+    workers: int | None = Field(default=None,ge=1,le=16)
 
 
 def allowed_path(value):
@@ -109,7 +113,7 @@ def scan(body: ScanRequest):
     state.clear(); state.update(running=True,percent=0,phase='extracting')
     def work():
         from backend.scanner import run
-        try: run(path,progress=lambda s:state.update(s))
+        try: run(path,workers=body.workers,progress=lambda s:state.update(s))
         except Exception:
             logging.exception('Scan failed')
             state.update(running=False,error='Scan failed. See backend logs for details.')
@@ -120,6 +124,17 @@ def scan(body: ScanRequest):
 
 @app.get('/scan/status')
 def scan_status(): return dict(state)
+
+
+@app.get('/evidence')
+def evidence(file: str=Query(min_length=1,max_length=2048),offset: int=Query(ge=0)):
+    with connect() as db:
+        if not db.execute("SELECT count(*) FROM information_schema.tables WHERE table_name='alert_evidence'").fetchone()[0]: return []
+        rows=records(db.execute('''SELECT e.*,i.incident_id FROM alert_evidence e
+            JOIN incident_alerts i USING(alert_id) JOIN incident_paths p USING(incident_id)
+            WHERE e."offset"=? AND p.status='active' ''',[offset]))
+    def normal(value): return value.replace('\\','/')
+    return [r for r in rows if normal(r['file'])==normal(file) or normal(r['file']).endswith('/'+normal(file))]
 
 
 if (ROOT/'frontend').exists(): app.mount('/ui',StaticFiles(directory=ROOT/'frontend',html=True),name='ui')

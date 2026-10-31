@@ -23,6 +23,9 @@ def path_for(alerts, access, templates):
         dst = a['dst_ip'] or a['host'] or a['user'] or 'unattributed'
         for entity in (src, dst): graph.add_node(entity, type='asset' if private(entity) else 'entity')
         graph.add_edge(src, dst, technique=a['technique'], ts=a['ts'], alert_id=a['alert_id'])
+        if a['user']:
+            graph.add_node(a['user'],type='user')
+            graph.add_edge(a['user'],dst,technique=a['technique'],ts=a['ts'],alert_id=a['alert_id'],relation='account mentioned in event')
         timeline.append(dict(ts=a['ts'], last_ts=a['last_ts'], rule=a['rule_id'], tech=a['technique'], tname=a['technique_name'],
                              tactic=a['tactic'], stage=a['stage_order'], src=src, dst=dst, sev=a['weight']*10,
                              desc=a['rule_name'], user=a['user'], count=a['count'], file=a['file'], offset=a['offset'],

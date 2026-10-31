@@ -32,7 +32,7 @@ def test_invalid_yaml(tmp_path,change):
     config=yaml.safe_load((ROOT/'rules/detect.yaml').read_text());config['rules'][0].update(change)
     p=tmp_path/'detect.yaml';p.write_text(yaml.safe_dump(config))
     (tmp_path/'sequence.yaml').write_text('sequences: []')
-    with pytest.raises((ValueError,Exception)): RuleEngine(p)
+    with pytest.raises((ValueError,__import__('re').error)): RuleEngine(p)
 
 
 def test_cross_chunk_and_file_thresholds(tmp_path):
@@ -46,6 +46,7 @@ def test_cross_chunk_and_file_thresholds(tmp_path):
     with connect(tmp_path/'test.duckdb') as db:
         materialize(db,outputs)
         alerts=records(db.execute('SELECT * FROM alerts ORDER BY ts'))
+        assert db.execute("SELECT count(*) FROM alert_evidence WHERE technique='T1110.001'").fetchone()[0]==23
     brute=[a for a in alerts if a['rule_id']=='R001']
     assert len(brute)==1 and brute[0]['count']==23
     assert len([a for a in alerts if a['rule_id']=='R010'])==1
@@ -111,3 +112,50 @@ def test_api_paths_and_pagination(tmp_path,monkeypatch):
         monkeypatch.setenv('API_TOKEN','test-secret')
         assert client.get('/overview').status_code==401
         assert client.get('/overview',headers={'Authorization':'Bearer test-secret'}).status_code==200
+
+
+def test_build_and_evidence_api(tmp_path,monkeypatch):
+    from backend.correlate import build
+    import backend.store as store
+    from backend.api import app
+    from fastapi.testclient import TestClient
+    dbpath=tmp_path/'pipeline.duckdb';monkeypatch.setattr(store,'DB_PATH',str(dbpath))
+    f=tmp_path/'attack.log';f.write_bytes(b''.join(login(n) for n in range(20))+login(25,True))
+    out=str(tmp_path/'part.parquet');scan_range((*next(ranges(f)),out,str(ROOT/'rules/detect.yaml')))
+    with connect(dbpath) as db:
+        materialize(db,[out]);build(db,{'bytes':f.stat().st_size})
+    with TestClient(app) as client:
+        incidents=client.get('/incidents').json();assert len(incidents)==1
+        iid=incidents[0]['id'];path=client.get(f'/incidents/{iid}/path').json()
+        assert path['sequence_ids']==['brute_force_then_login']
+        assert len(path['timeline'])==2 and path['alert_count']==21
+        assert path['timeline'][0]['rule']=='R001' and path['timeline'][1]['rule']=='R010'
+        assert len(client.get('/evidence',params={'file':'attack.log','offset':len(login(0))}).json())==1
+        assert client.get('/incidents?search=198.51.100.7').json()[0]['id']==iid
+        assert len(client.get(f'/incidents/{iid}/alerts').json())==2
+
+
+def test_checkpointed_run_and_failed_publication(tmp_path):
+    from backend.scanner import run
+    from backend.store import records
+    f=tmp_path/'attack.log';f.write_bytes(login(0,True))
+    dbpath=tmp_path/'run.duckdb'
+    first=run(f,db_path=dbpath,workers=1,chunk_size=500)
+    with connect(dbpath) as db: previous=db.execute("SELECT value FROM cache WHERE key='overview'").fetchone()[0]
+    second=run(f,db_path=dbpath,workers=1,chunk_size=500)
+    assert first['run_id']==second['run_id']
+    with connect(dbpath) as db:
+        assert db.execute('SELECT count(*) FROM chunks').fetchone()[0]==1
+        assert db.execute('SELECT count(*) FROM alerts').fetchone()[0]==1
+    with pytest.raises(ValueError):run(tmp_path/'missing.log',db_path=dbpath,workers=1)
+    with connect(dbpath) as db:assert json.loads(db.execute("SELECT value FROM cache WHERE key='overview'").fetchone()[0])['incidents']==json.loads(previous)['incidents']
+
+
+def test_no_candidates_is_successful(tmp_path):
+    f=tmp_path/'noise.log';f.write_bytes(b'eventtime=1792745306000000000 type="event" subtype="dhcp"\n')
+    out=str(tmp_path/'empty.parquet');scan_range((*next(ranges(f)),out,str(ROOT/'rules/detect.yaml')))
+    from backend.correlate import build
+    with connect(tmp_path/'empty.duckdb') as db:
+        materialize(db,[out]);build(db,{})
+        value=json.loads(db.execute("SELECT value FROM cache WHERE key='overview'").fetchone()[0])
+        assert value['totals']['incidents']==0
