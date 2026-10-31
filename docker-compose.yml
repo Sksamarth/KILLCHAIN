@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    mem_limit: 8g
+    memswap_limit: 8g
+    cpus: ${BACKEND_CPUS:-4}
+    environment:
+      LOG_PATH: /data
+      DB_PATH: /db/kc.duckdb
+      WORKERS: ${WORKERS:-4}
+      API_TOKEN: ${API_TOKEN:-}
+    volumes:
+      - ${DATA_DIR:-./data}:/data:ro
+      - kc_db:/db
+      - ./rules:/app/rules:ro
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health',timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    ulimits:
+      nofile: {soft: 65536, hard: 65536}
+  frontend:
+    image: nginx:1.28-alpine
+    ports:
+      - 127.0.0.1:${PORT:-8080}:80
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend: {condition: service_healthy}
+    restart: unless-stopped
+  evaluate:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    environment:
+      API_URL: http://frontend/api
+      GROUND_TRUTH: /data/ground_truth/attacks.json
+    volumes:
+      - ${DATA_DIR:-./data}:/data:ro
+    command: [python, -m, backend.evaluate]
+volumes:
+  kc_db:

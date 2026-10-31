@@ -1,0 +1,10 @@
+.runtime/
+__pycache__/
+.pytest_cache/
+data/
+tmp/
+*.duckdb*
+*.parquet
+.env
+output/
+rules/enterprise-attack.json

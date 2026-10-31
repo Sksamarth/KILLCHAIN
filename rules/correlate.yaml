@@ -1,0 +1,10 @@
+max_gap_seconds: 3600
+min_alerts: 2
+min_weight_override: 8
+entity_degree_cap: 200
+stoplist: ['127.0.0.1', '0.0.0.0', '::1']
+allowlists: []
+asset_criticality:
+  - {subnet: 10.10.99.0/24, value: 3}
+  - {subnet: 10.10.20.0/24, value: 2}
+max_component_alerts: 100000

@@ -1,0 +1,6 @@
+templates:
+  Credential Access: '{rule_name}: {count} matching events from {src_ip} against {dst_ip} for account {user}.'
+  Initial Access: '{rule_name}: observed {src_ip} communicating with {dst_ip}.'
+  Lateral Movement: '{rule_name}: observed access from {src_ip} to {dst_ip}.'
+  Exfiltration: '{rule_name}: {bytes} bytes sent from {src_ip} to {dst_ip}.'
+  default: '{rule_name}: {src_ip} to {dst_ip}, account {user}.'

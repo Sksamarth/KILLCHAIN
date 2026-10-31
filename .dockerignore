@@ -1,0 +1,10 @@
+.git
+.runtime
+data
+tmp
+output
+**/__pycache__
+.pytest_cache
+*.duckdb*
+*.parquet
+.env

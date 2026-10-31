@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kill Chain XDR: Attack Path Analysis</title>
+<style>
+:root{--bg:#0a111f;--p:#111a2e;--p2:#16213a;--b:#22314f;--t:#d8e1f2;--m:#8294b4;--a:#3aa0ff;--red:#ff4d5e;--amb:#ffb020;--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;background:#0d1626;border-bottom:1px solid var(--b);flex-wrap:wrap}
+.logo{font-weight:700;font-size:16px}.logo b{color:var(--a)}
+nav a{color:var(--m);text-decoration:none;padding:6px 2px;margin-right:14px;border-bottom:2px solid transparent}
+nav a.on{color:var(--t);border-color:var(--a)}
+.sp{flex:1}
+input,button{font:inherit;color:var(--t);background:#0a111f;border:1px solid var(--b);border-radius:6px;padding:6px 10px}
+input:focus-visible,button:focus-visible{outline:2px solid var(--a);outline-offset:1px}
+button{cursor:pointer;background:var(--p2)}button:hover{border-color:var(--a)}
+button.go{background:var(--a);border-color:var(--a);color:#06101f;font-weight:600}
+#path{width:150px;font-family:var(--mono)}#q{width:190px}
+#st{color:var(--m);font-size:12px}
+.ban{background:#3a2a08;color:#ffd58a;padding:6px 18px;font-size:13px;border-bottom:1px solid #5a4210}
+main{padding:16px 18px;max-width:1500px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
+.card,.panel{background:var(--p);border:1px solid var(--b);border-radius:8px;padding:12px 14px}
+.card h4,.panel h3{margin:0 0 4px;font-size:13px;font-weight:600;color:var(--m)}
+.big{font-size:28px;font-weight:700}.big small{font-size:13px;color:var(--m);font-weight:400}
+.meter{height:6px;background:#0a111f;border-radius:3px;margin:6px 0;overflow:hidden}.meter i{display:block;height:100%}
+.sub{display:flex;justify-content:space-between;font-size:12px;color:var(--m)}
+.grid{display:grid;grid-template-columns:minmax(260px,1fr) minmax(380px,1.15fr) minmax(260px,1fr);gap:12px;align-items:start}
+.panel .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.panel .hd span{font-size:12px;color:var(--m)}
+.cap{border:1px solid var(--b);border-radius:8px;margin-bottom:8px;background:var(--p2)}
+.cap>.top{display:flex;gap:10px;align-items:center;padding:9px 10px;cursor:pointer}
+.score{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:3px solid}
+.nm{flex:1;min-width:0}.nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nm small{color:var(--m)}
+.cap .bd{display:none;padding:0 10px 10px;font-size:13px;color:var(--m)}.cap.open .bd{display:block}
+.cap .chev{color:var(--m);transition:transform .15s}.cap.open .chev{transform:rotate(180deg)}
+.chip{display:inline-block;border:1px solid;border-radius:10px;padding:0 7px;margin-right:4px;font-size:12px}
+.bd p{margin:6px 0}.mono{font-family:var(--mono)}
+.loopwrap{text-align:center}
+.loop{width:100%;max-height:520px}
+.loop .seg{cursor:pointer}.loop .seg path{fill:none;stroke-width:22;stroke-linecap:round;opacity:.85}
+.loop .seg:hover path,.loop .seg.sel path{opacity:1;stroke-width:28}
+.loop .seg circle{fill:#0d1626;stroke-width:3}
+.loop .n1{font:700 13px system-ui;fill:var(--t);text-anchor:middle}.loop .n2{font:10px system-ui;fill:var(--m);text-anchor:middle}
+.loop .lab{font:600 13px system-ui;text-anchor:middle}
+.loop .ctr{font:700 18px system-ui;fill:var(--t);text-anchor:middle}.loop .ctr2{font:12px system-ui;fill:var(--m);text-anchor:middle}
+.loop .flow{fill:none;stroke:#2a3d63;stroke-width:2;stroke-dasharray:3 12;animation:fl 14s linear infinite}
+.loop.paused .flow{animation:none}
+@keyframes fl{to{stroke-dashoffset:-150}}
+@media(prefers-reduced-motion:reduce){.loop .flow{animation:none}}
+.asset{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--b)}.asset:last-child{border:0}
+.asset .ip{font-family:var(--mono);font-weight:600}.asset small{color:var(--m);display:block}
+.tact{margin-top:12px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:170px;padding-top:6px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;min-width:0}
+.stk{width:100%;max-width:46px;display:flex;flex-direction:column-reverse;flex:1;justify-content:flex-start}
+.stk i{display:block;width:100%}
+.bar span{font-size:11px;color:var(--m);text-align:center;margin-top:4px;line-height:1.1;height:26px;overflow:hidden}
+.leg button{font-size:12px;padding:2px 9px;margin-left:4px}.leg button.on{border-color:var(--a);color:var(--a)}
+.back{margin-bottom:10px}
+.ih{display:flex;gap:14px;align-items:center;margin-bottom:12px}.ih h2{margin:0;font-size:20px}.ih small{color:var(--m)}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
+.strip .chev2{background:var(--p);border:1px solid var(--b);border-top:4px solid var(--c);border-radius:6px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center}
+.strip b{font-size:18px;color:var(--c)}.strip span{font-size:12px;color:var(--m)}
+.two{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);gap:12px;align-items:start}
+.gscroll{overflow-x:auto}.gscroll svg{display:block;min-width:760px;width:100%}
+.ed path{fill:none;stroke-width:2.2}.ed.pred path{stroke-dasharray:6 5}
+.ed circle{fill:#0d1626;stroke-width:1.5}.ed text{font:700 11px system-ui;fill:var(--t);text-anchor:middle;pointer-events:none}
+.ed{cursor:pointer}.dim{opacity:.18}
+.nd{cursor:pointer}.nd rect,.nd circle{fill:#0d1626;stroke-width:2.5}.nd text{font:12px var(--mono);fill:var(--t);text-anchor:middle}
+.nd.ghost rect{stroke-dasharray:4 3}
+.lg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--m);margin-top:8px}
+.tl{display:flex;gap:10px;padding:8px 6px;border-bottom:1px solid var(--b);cursor:pointer;align-items:flex-start}
+.tl:hover,.tl.on{background:var(--p2)}
+.dot{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#06101f}
+.tl>div{flex:1;min-width:0}.r2{font-size:12px;color:var(--m);word-break:break-word}.tl em{font-style:normal}
+.sev{font-weight:700}
+.rep{background:#0a111f;border:1px solid var(--b);border-radius:6px;padding:10px;margin:0;line-height:1.55}
+ul.nx{margin:6px 0 0;padding-left:18px}ul.nx small{color:var(--m)}
+#tip{position:fixed;pointer-events:none;background:#050a14;border:1px solid var(--b);padding:6px 9px;border-radius:6px;font-size:12px;max-width:280px;display:none;z-index:9}
+@media(max-width:1100px){.grid,.two{grid-template-columns:1fr}.cards,.strip{grid-template-columns:repeat(2,1fr)}}
+/* Visual refinement: quieter surfaces, stronger hierarchy, generous spacing. */
+:root{--bg:#090d17;--p:#101725;--p2:#151f31;--b:#253149;--t:#edf2fc;--m:#94a5c1;--a:#63a5ff}
+body{background:radial-gradient(ellipse at 60% -30%,#17335a55,transparent 65%),var(--bg);font-size:13px;min-height:100vh}
+header{padding:17px 28px;gap:22px;position:sticky;top:0;z-index:5;background:#0c1322f5;backdrop-filter:blur(16px)}
+.logo{letter-spacing:-.7px;font-size:20px}.logo:before{content:'◈';font-size:28px;color:#63a5ff;vertical-align:middle;margin-right:10px}
+main{padding:26px 28px 40px;max-width:1680px}.hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 24px}.eyebrow{color:var(--a);font:600 10px var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}.hero h1{font-size:28px;letter-spacing:-1px;font-weight:650;margin:0 0 6px}.hero p{color:var(--m);margin:0}.pill{border:1px solid #2ec4b655;color:#7ddfd3;background:#15373455;padding:7px 12px;border-radius:30px;font-size:11px;white-space:nowrap}
+.card,.panel{border-radius:13px;padding:18px;background:linear-gradient(145deg,#141d2d,#101725);box-shadow:0 8px 28px #00000012}.cards{gap:14px;margin-bottom:20px}.card{position:relative;overflow:hidden}.card:before{content:'';position:absolute;left:0;top:20px;width:3px;height:25px;background:var(--a);border-radius:3px}.card h4{text-transform:uppercase;letter-spacing:1.2px;font-size:10px}.big{font-size:36px;font-weight:550;margin:8px 0}.meter{height:4px;margin:10px 0}.sub{gap:8px;font-size:11px}.grid{gap:18px;grid-template-columns:minmax(290px,1.05fr) minmax(380px,1.2fr) minmax(250px,.9fr)}
+.panel .hd{margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #25314988}.panel h3{color:var(--t);font-size:13px}.cap{border-color:#28344b;background:#131e30;margin-bottom:12px}.cap>.top{padding:14px 12px}.score{width:40px;height:40px;border-width:2px;font-family:var(--mono);background:#0b1220}.cap .bd{padding:0 14px 15px}.bd p{margin:10px 0;line-height:1.65}.nm b{font-size:12px}.nm small{font-size:10px;display:block;margin-top:4px}.chip{background:#0c1322;font:10px var(--mono);padding:3px 7px;margin-top:5px;border-radius:5px}
+input,button{border-radius:7px;padding:8px 12px;font-size:12px}button.go{background:linear-gradient(120deg,#80b7ff,#5699fa);color:#071429;box-shadow:0 3px 12px #3a8bff22}button.go:hover{filter:brightness(1.1)}.asset{padding:14px 0;gap:12px}.asset small{font-size:11px;margin-top:7px}.asset .ip{font-size:12px}.tact{margin-top:20px}.bars{height:180px;gap:14px}.stk i{border-radius:3px 3px 0 0}.bar span{font-size:10px;margin-top:10px;height:28px}.loop{filter:drop-shadow(0 0 12px #3480ff14)}.loop .seg path{stroke-width:15}.loop .seg:hover path,.loop .seg.sel path{stroke-width:19}.loop .seg circle{stroke-width:2}.rep{line-height:1.8;padding:16px}.tl{padding:13px 8px}.strip{margin:20px 0;gap:10px}.strip .chev2{padding:12px;border-top-width:2px}.ih h2{font-size:25px;letter-spacing:-.6px}.two{gap:18px}.ban{padding:10px 28px}.filters{display:flex;gap:6px;margin-bottom:14px}.filters .on{background:#203956;color:#8cbcff;border-color:#4979b3}.error{padding:16px;border:1px solid #b14d60;border-radius:10px;color:#ffb2bf}.footer{display:flex;justify-content:space-between;margin-top:22px;color:#71829f;font:10px var(--mono);letter-spacing:.4px}
+:focus-visible{outline:2px solid var(--a);outline-offset:3px}a{color:var(--a)}
+@media(max-width:1200px){.grid{grid-template-columns:1fr 1fr}.loopwrap{grid-row:1;grid-column:2}.grid>.panel:last-child{grid-column:1/-1}.two{grid-template-columns:1fr}.cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){header{position:static;padding:15px;gap:12px}main{padding:20px 14px}.hero{align-items:flex-start}.hero h1{font-size:23px}.hero .pill{display:none}.grid{display:flex;flex-direction:column}.grid>.panel{width:100%}.cards{grid-template-columns:repeat(2,1fr)}.cards>.card:last-child{grid-column:1/-1}.bars{overflow-x:auto}.bar{min-width:47px}.hero p{font-size:12px}.strip{grid-template-columns:1fr 1fr}.footer{gap:12px;flex-wrap:wrap}#q{width:160px}#path{width:120px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><b>KillChain</b> XDR</div>
+  <nav><a href="#home" class="on">Home</a></nav>
+  <div class="sp"></div>
+  <input id="q" type="search" placeholder="Search incident or IP" aria-label="Search incidents">
+  <input id="path" value="/data" aria-label="Log folder">
+  <button id="scan" class="go">Scan logs</button>
+  <span id="st">idle</span>
+</header>
+<div id="banner"></div>
+<main><div class="hero"><div><div class="eyebrow">Security operations / Attack intelligence</div><h1>See the attack. Connect the story.</h1><p>From scattered signals to evidence-backed attack paths.</p></div><span class="pill" id="connection">Connecting to analysis engine</span></div><div id="view" aria-live="polite"></div><div class="footer"><span>KILLCHAIN XDR · DETERMINISTIC ANALYSIS</span><span>Every finding traces back to log evidence</span></div></main>
+<div id="tip"></div>
+<script>
+/* Backend contract (nginx proxies /api/ to FastAPI):
+   GET /api/overview -> {totals:{incidents,incidents_critical,alerts,alerts_critical,assets,assets_risky,users,users_risky},
+     stages:[{critical,total}x5], tactics:[{tactic,critical,non_critical}],
+     incidents:[{id,name,score,alert_count,stage_counts:[x5],first,last,hosts,ips:[],summary}],
+     assets:[{ip,score,stage_counts:[x5],top:{desc,tech}}], scan:{mbps,peak_gb,seconds}}
+   GET /api/incidents/{id}/path -> {id,name,score,alert_count,report,
+     timeline:[{ts|t,rule,tech,tname,tactic,stage(0-4),src,dst,sev,desc,user?}], next_hops:[{from,to,why}]}
+   POST /api/scan {path}; GET /api/scan/status -> {running,percent,mbps,eta}
+   Critical = score >= 75. Stage index: 0 Initial Attempts, 1 Persistent Foothold, 2 Exploration, 3 Propagation, 4 Exfiltration & Impact. */
+const ST=[
+ {n:'Initial Attempts',c:'#3aa0ff',t:['Reconnaissance','Initial Access','Credential Access (external)']},
+ {n:'Persistent Foothold',c:'#a77bff',t:['Execution','Persistence','Defense Evasion','Command and Control']},
+ {n:'Exploration',c:'#2ec4b6',t:['Discovery','Collection']},
+ {n:'Propagation',c:'#ffb020',t:['Privilege Escalation','Lateral Movement','Credential Access (internal)']},
+ {n:'Exfiltration & Impact',c:'#ff4d5e',t:['Exfiltration','Impact']}];
+const TACT=[['Reconnaissance',0],['Initial Access',0],['Credential Access',0],['Execution',1],['Persistence',1],['Defense Evasion',1],['Command and Control',1],['Discovery',2],['Collection',2],['Privilege Escalation',3],['Lateral Movement',3],['Exfiltration',4],['Impact',4]];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const priv=ip=>/^(10\.|192\.168\.|127\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip);
+const crit=ip=>ip.startsWith('10.10.99.')?3:ip.startsWith('10.10.20.')?2:1;
+const scol=n=>n>=75?'#ff4d5e':n>=50?'#ffb020':'#3aa0ff';
+const tm=e=>e.t||new Date(e.ts*1000).toISOString().slice(11,19);
+const num=n=>Number(n||0).toLocaleString();
+
+/* ---- demo data (used only when the API is unreachable) ---- */
+const E=(t,rule,tech,tname,tactic,stage,src,dst,w,desc)=>({t,rule,tech,tname,tactic,stage,src,dst,sev:w*10,desc});
+const DEMO=[
+{id:1,name:'Admin takeover and data exfiltration',raw:1284,events:[
+ E('09:12','R002','T1110.003','Password Spraying','Credential Access',0,'45.74.28.0/24','10.10.99.1',3,'12 usernames tried from one /24'),
+ E('09:31','R001','T1110.001','Password Guessing','Credential Access',0,'198.51.100.7','10.10.99.1',6,'20 failed logins for admin'),
+ E('09:34','R010','T1078','Valid Accounts','Initial Access',0,'198.51.100.7','10.10.99.1',7,'admin login succeeded from an external IP'),
+ E('09:41','R070','T1562.004','Disable or Modify System Firewall','Defense Evasion',1,'198.51.100.7','10.10.99.1',5,'firewall configuration changed'),
+ E('09:58','R071','T1136','Create Account','Persistence',1,'198.51.100.7','10.10.99.1',7,'new admin account created'),
+ E('10:05','R031','T1021.001','Remote Desktop Protocol','Lateral Movement',3,'10.10.99.1','10.10.20.30',5,'RDP between internal hosts'),
+ E('10:12','R032','T1021.002','SMB/Windows Admin Shares','Lateral Movement',3,'10.10.20.30','10.10.20.40',5,'SMB session to the file server'),
+ E('10:40','R040','T1041','Exfiltration Over C2 Channel','Exfiltration',4,'10.10.20.40','198.51.100.4',9,'2.1 GB sent to an external IP')],
+ next:[{from:'10.10.20.40',to:'10.10.20.50',why:'same DMZ subnet, SMB reachable'},{from:'10.10.99.1',to:'10.10.99.14',why:'management subnet, admin session active'}],
+ report:'Attacker sprayed the firewall admin login from 45.74.28.0/24, guessed the admin password from 198.51.100.7, logged in, changed the firewall configuration and created an account. The attacker then moved from 10.10.99.1 to 10.10.20.30 over RDP and 10.10.20.40 over SMB, and sent 2.1 GB to 198.51.100.4.'},
+{id:2,name:'Malware download and DNS beaconing',raw:96,events:[
+ E('10:58','R062','T1566.002','Spearphishing Link','Initial Access',0,'10.10.30.70','151.71.48.55',2,'phishing site reached, not blocked'),
+ E('11:02','R060','T1105','Ingress Tool Transfer','Command and Control',1,'10.10.30.70','173.41.123.248',4,'setup.exe from update-paas-amazon.com'),
+ E('11:30','R050','T1071.004','DNS','Command and Control',1,'10.10.30.70','11.113.232.73',4,'31 lookups of one domain in an hour')],
+ next:[{from:'10.10.30.70',to:'10.10.30.71',why:'same LAN subnet'}],
+ report:'Host 10.10.30.70 reached a phishing site, downloaded setup.exe from a lookalike domain and then queried one domain 31 times in an hour.'},
+{id:3,name:'External port scan with IPS hit',raw:31,events:[
+ E('13:00','R020','T1046','Network Service Discovery','Discovery',2,'198.51.100.99','10.10.20.50',3,'16 ports in 60 seconds'),
+ E('13:04','R061','T1190','Exploit Public-Facing Application','Initial Access',0,'198.51.100.99','10.10.20.50',4,'critical IPS signature on the DMZ host')],
+ next:[{from:'10.10.20.50',to:'10.10.20.30',why:'same DMZ subnet'}],
+ report:'198.51.100.99 scanned 16 ports on 10.10.20.50 and then triggered a critical IPS signature.'}];
+function overview(incs){
+ const stages=ST.map(()=>({critical:0,total:0})),tac={},assets={};
+ const items=incs.map(i=>{
+  const sc=[0,0,0,0,0];let sum=0,mc=1;
+  i.events.forEach(e=>{
+   sc[e.stage]++;sum+=e.sev/10;stages[e.stage].total++;if(e.sev>=75)stages[e.stage].critical++;
+   const k=tac[e.tactic]||(tac[e.tactic]={tactic:e.tactic,critical:0,non_critical:0});e.sev>=75?k.critical++:k.non_critical++;
+   [e.src,e.dst].forEach(ip=>{const a=assets[ip]||(assets[ip]={ip,score:0,stage_counts:[0,0,0,0,0],top:e});
+    a.score=Math.max(a.score,e.sev);a.stage_counts[e.stage]++;if(e.sev>a.top.sev)a.top=e;mc=Math.max(mc,crit(ip))})});
+  const ds=sc.filter(Boolean).length,ips=[...new Set(i.events.flatMap(e=>[e.src,e.dst]))];
+  return{id:i.id,name:i.name,score:Math.min(100,Math.round(sum*ds*mc)),alert_count:i.raw,stage_counts:sc,first:i.events[0].t,last:i.events.at(-1).t,hosts:ips.length,ips,summary:i.report}});
+ const al=Object.values(assets).sort((a,b)=>b.score-a.score);
+ return{incidents:items.sort((a,b)=>b.score-a.score),stages,tactics:Object.values(tac),assets:al,scan:{},
+  totals:{incidents:items.length,incidents_critical:items.filter(i=>i.score>=75).length,
+   alerts:stages.reduce((s,x)=>s+x.total,0),alerts_critical:stages.reduce((s,x)=>s+x.critical,0),
+   assets:al.length,assets_risky:al.filter(a=>a.score>=70).length,users:1,users_risky:1}}}
+
+/* ---- state, data loading ---- */
+let S={d:null,demo:false,stage:null,crit:'all',open:new Set([1]),q:'',p:null,status:'active',expanded:false};
+async function api(p,o){const r=await fetch('/api'+p,o);if(!r.ok)throw new Error(r.status);return r.json()}
+async function load(){try{S.d=await api('/overview');S.demo=false}catch(e){S.demo=true;S.d=overview(DEMO)}$('#connection').textContent=S.demo?'Preview · API offline':'Analysis engine connected';route()}
+function route(){
+ const m=location.hash.match(/^#incident\/(\d+)/);
+ $('#banner').innerHTML=S.demo?'<div class="ban">Demo data shown: the API is not reachable. Start the backend and run a scan to see real incidents.</div>':'';
+ m?incident(+m[1]):home()}
+
+/* ---- home dashboard ---- */
+const card=(t,a,b,l,c)=>`<div class="card"><h4>${t}</h4><div class="big">${num(b)}</div><div class="meter"><i style="width:${b?a/b*100:0}%;background:${c}"></i></div><div class="sub"><span style="color:${c}">${l} ${num(a)}</span><span>Total ${num(b)}</span></div></div>`;
+function loop(){
+ const d=S.d,cx=230,cy=230,r=150,pt=(a,rr)=>[cx+rr*Math.cos(a*Math.PI/180),cy+rr*Math.sin(a*Math.PI/180)];
+ let s=`<svg viewBox="-60 -10 580 480" class="loop" role="img" aria-label="Kill chain loop"><circle cx="230" cy="230" r="150" class="flow"/>`;
+ ST.forEach((g,i)=>{
+  const mid=-90+i*72,[x1,y1]=pt(mid-27,r),[x2,y2]=pt(mid+27,r),[bx,by]=pt(mid,r),[lx,ly]=pt(mid,i===0?200:196),st=d.stages[i]||{critical:0,total:0};
+  s+=`<g class="seg${S.stage===i?' sel':''}" data-stage="${i}" data-tip="${esc(g.n+': '+g.t.join(', '))}"><path d="M${x1},${y1}A${r},${r} 0 0 1 ${x2},${y2}" stroke="${g.c}"/><circle cx="${bx}" cy="${by}" r="30" stroke="${g.c}"/><text x="${bx}" y="${by}" class="n1">${st.critical} | ${st.total}</text><text x="${bx}" y="${by+13}" class="n2">critical | total</text><text x="${lx}" y="${ly+(i===0?0:4)}" class="lab" fill="${g.c}">${esc(g.n)}</text></g>`});
+ return s+`<text x="230" y="224" class="ctr">Kill chain</text><text x="230" y="246" class="ctr2">${S.stage==null?'all stages':esc(ST[S.stage].n)}</text></svg>`}
+function tactics(){
+ const d=S.d,rows=TACT.map(([n,st])=>{const k=d.tactics.find(x=>x.tactic===n)||{};return{n,st,c:k.critical||0,o:k.non_critical||0}});
+ const show=r=>[S.crit==='non'?0:r.c,S.crit==='critical'?0:r.o],mx=Math.max(1,...rows.map(r=>show(r)[0]+show(r)[1]));
+ return`<div class="bars">${rows.map(r=>{const[c,o]=show(r);const col=ST[r.st].c;
+  return`<div class="bar" data-stage="${r.st}" data-tip="${esc(r.n)}: ${r.c} critical, ${r.o} other"><div class="stk"><i style="height:${c/mx*100}%;background:${col}"></i><i style="height:${o/mx*100}%;background:${col};opacity:.4"></i></div><span>${esc(r.n)}</span></div>`}).join('')}</div>`}
+function home(){
+ const d=S.d,t=d.totals,sf=S.stage,q=S.q.toLowerCase(),sc=d.scan||{};
+ const inc=d.incidents.filter(i=>(i.status||'active')===S.status&&(sf==null||i.stage_counts[sf]>0)&&(!q||(i.name+' '+(i.ips||[]).join(' ')).toLowerCase().includes(q)));
+ const ast=d.assets.filter(a=>sf==null||a.stage_counts[sf]>0).slice(0,6);
+ const chips=a=>a.map((n,k)=>n?`<span class="chip" style="border-color:${ST[k].c};color:${ST[k].c}" title="${esc(ST[k].n)}">${n}</span>`:'').join('');
+ $('#view').innerHTML=`
+ <div class="cards">${card('Incidents',t.incidents_critical,t.incidents,'Critical','#ff4d5e')}${card('Alerts',t.alerts_critical,t.alerts,'Critical','#ffb020')}${card('Assets',t.assets_risky,t.assets,'Risky','#a77bff')}${card('Users',t.users_risky,t.users,'Risky','#2ec4b6')}
+ <div class="card"><h4>Last scan</h4><div class="big">${sc.mbps?sc.mbps.toFixed(1):'-'}<small> MB/s</small></div><div class="sub"><span>Peak memory ${sc.peak_gb??'-'} GB</span><span>${sc.seconds?Math.round(sc.seconds/60)+' min':'-'}</span></div></div></div>
+ <div class="filters"><button data-status="active" class="${S.status==='active'?'on':''}">Active incidents</button><button data-status="suppressed" class="${S.status==='suppressed'?'on':''}">Suppressed · ${num(t.suppressed)}</button></div>
+ <div class="grid">
+  <section class="panel"><div class="hd"><h3>Top incidents</h3><span>${inc.length} shown${sf!=null?' for '+esc(ST[sf].n):''}</span></div>
+  ${inc.map(i=>`<div class="cap${S.open.has(+i.id)?' open':''}"><div class="top" data-open="${i.id}" role="button" tabindex="0" aria-expanded="${S.open.has(+i.id)}"><div class="score" style="border-color:${scol(i.score)}">${i.score}</div><div class="nm"><b title="${esc(i.name)}">${esc(i.name)}</b><small>${num(i.alert_count)} matching events · ${num(i.detection_count||i.alert_count)} detections</small></div><span class="chev">&#9662;</span></div>
+  <div class="bd"><div>${chips(i.stage_counts)}</div><p>${esc(typeof i.first==='number'?new Date(i.first*1000).toLocaleString():i.first)} to ${esc(typeof i.last==='number'?new Date(i.last*1000).toLocaleString():i.last)}, ${i.hosts} hosts and IPs</p>${i.suppress_reason?'<p>Suppressed: '+esc(i.suppress_reason)+'</p>':''}<p>${esc(i.summary.slice(0,700))}${i.summary.length>700?'…':''}</p><button class="go" data-go="incident/${i.id}">Investigate path &#8599;</button></div></div>`).join('')||'<p class="r2">No incidents match. Run a scan or adjust the filters.</p>'}</section>
+  <section class="panel loopwrap"><div class="hd"><h3>XDR kill chain</h3><span><button id="pause" aria-pressed="false">Pause animation</button>${sf!=null?' <button data-stage="'+sf+'">Clear filter</button>':''}</span></div>${loop()}</section>
+  <section class="panel"><div class="hd"><h3>Top risky assets</h3><span>score 0 to 100</span></div>
+  ${ast.map(a=>`<div class="asset"><div class="score" style="border-color:${scol(a.score)}">${a.score}</div><div><span class="ip">${esc(a.ip)}</span> <span class="r2">${priv(a.ip)?'internal':'external'}</span><div>${chips(a.stage_counts)}</div><small>${esc(a.top.tech||'')} ${esc(a.top.desc||'')}</small></div></div>`).join('')||'<p class="r2">No assets for this filter.</p>'}</section>
+ </div>
+ <section class="panel tact"><div class="hd"><h3>Alerts by tactic</h3><span class="leg">${[['all','All'],['critical','Critical'],['non','Other']].map(([k,l])=>`<button data-crit="${k}" class="${S.crit===k?'on':''}">${l}</button>`).join('')}</span></div>${tactics()}</section>`}
+
+/* ---- incident view with attack path graph ---- */
+function demoPath(id){const i=DEMO.find(x=>x.id===id),o=S.d.incidents.find(x=>x.id===id);return i&&{id,name:i.name,score:o.score,alert_count:i.raw,timeline:i.events,next_hops:i.next,report:i.report}}
+async function incident(id){
+ let p;try{p=await api('/incidents/'+id+'/path')}catch(e){if(S.demo)p=demoPath(id);else{$('#view').innerHTML='<div class="error">Could not load this incident. <a href="#home">Return to overview</a></div>';return}}
+ if(!p){$('#view').innerHTML='<p>Incident not found. <a href="#home">Back to home</a></p>';return}
+ S.p=p;const tl=p.timeline.slice(0,S.expanded?1000:120);
+ $('#view').innerHTML=`<button class="back" data-go="home">&#8592; Back to home</button>
+ <div class="ih"><div class="score" style="border-color:${scol(p.score)};width:52px;height:52px;font-size:18px">${p.score}</div><div><h2>${esc(p.name)}</h2><small>${num(p.alert_count)} matching events, ${p.timeline.length} attack steps</small></div><button id="export">Export evidence</button></div>${p.timeline.length>tl.length?'<p class="r2">Showing '+tl.length+' of '+p.timeline.length+' steps. <button id="show-more">Show up to 1,000 steps</button> Export evidence for the full path.</p>':''}
+ <div class="strip">${ST.map((g,i)=>`<div class="chev2" style="--c:${g.c}"><span>${esc(g.n)}</span><b>${tl.filter(e=>e.stage===i).length}</b></div>`).join('')}</div>
+ <div class="two"><section class="panel"><div class="hd"><h3>Attack path</h3><span>click a node or step to trace it</span></div><div class="gscroll">${graph({...p,timeline:tl,next_hops:(p.next_hops||[]).slice(0,30)})}</div>
+  <div class="lg"><span>Solid line: what happened, colored by stage</span><span style="color:#ff4d5e">Dashed red: could reach next</span><span>Circle: external IP</span><span>Square: internal asset</span></div></section>
+  <div><section class="panel"><div class="hd"><h3>Timeline</h3><span>${tl.length} steps</span></div>
+  ${tl.map((e,i)=>`<div class="tl" data-i="${i}"><span class="dot" style="background:${ST[e.stage].c}">${i+1}</span><div><div><b class="mono">${esc(e.tech)}</b> ${esc(e.tname)} <em style="color:${ST[e.stage].c}">${esc(e.tactic)}</em></div><div class="r2">${esc(tm(e))}, ${esc(e.src)} to ${esc(e.dst)}. ${esc(e.desc)} (${esc(e.rule)})${e.out_of_order?' · Stage order differs from expected progression':''}</div><div class="r2 mono">${e.file?esc(e.file)+' @ byte '+esc(e.offset):''}</div></div><span class="sev" style="color:${scol(e.sev)}">${e.sev}</span></div>`).join('')}</section>
+  <section class="panel" style="margin-top:12px"><div class="hd"><h3>Incident report</h3></div><p class="rep">${esc(p.report)}</p>
+  <h3 style="margin:12px 0 0">What the attacker could reach next</h3><ul class="nx">${(p.next_hops||[]).map(h=>`<li><span class="mono">${esc(h.from)}</span> to <span class="mono">${esc(h.to)}</span> <small>${esc(h.why)}</small></li>`).join('')||'<li><small>No further reachable assets found.</small></li>'}</ul></section></div></div>`}
+function graph(p){
+ const W=940,m=new Map(),tl=p.timeline,seen={};
+ tl.forEach(e=>[e.src,e.dst].forEach(ip=>{const n=m.get(ip);n?n.stage=Math.min(n.stage,e.stage):m.set(ip,{ip,stage:e.stage,ord:m.size})}));
+ (p.next_hops||[]).forEach(h=>[h.from,h.to].forEach(ip=>{if(!m.has(ip))m.set(ip,{ip,stage:Math.min(4,(m.get(h.from)||{stage:3}).stage+1),ord:m.size,ghost:1})}));
+ const cols=[[],[],[],[],[]];m.forEach(n=>cols[n.stage].push(n));
+ const H=Math.max(380,Math.max(...cols.map(c=>c.length))*100+110),cw=(W-40)/5;
+ cols.forEach((c,i)=>c.forEach((n,k)=>{n.x=20+cw*i+cw/2;n.y=64+(H-64)/2+(k-(c.length-1)/2)*100}));
+ const edge=(a,b,col,mk,cls,i,lab,tip)=>{
+  const A=m.get(a),B=m.get(b),k=a+'>'+b;seen[k]=(seen[k]||0)+1;const off=(seen[k]-1)*24,dx=B.x-A.x;
+  const x1=A.x+(dx>0?26:dx<0?-26:0),x2=B.x+(dx>0?-26:dx<0?26:0);let d,mx,my;
+  if(dx===0){d=`M${x1},${A.y}C${x1+70+off},${A.y} ${x1+70+off},${B.y} ${x2},${B.y}`;mx=x1+52+off;my=(A.y+B.y)/2}
+  else{const c=(x1+x2)/2;d=`M${x1},${A.y}C${c},${A.y+off} ${c},${B.y+off} ${x2},${B.y}`;mx=c;my=(A.y+B.y)/2+off*.75}
+  return`<g class="ed ${cls}" data-i="${i}" data-tip="${esc(tip)}"><path d="${d}" stroke="${col}" marker-end="url(#${mk})"/><circle cx="${mx}" cy="${my}" r="10" stroke="${col}"/><text x="${mx}" y="${my+4}">${lab}</text></g>`};
+ let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Attack path graph"><defs>${ST.map((g,i)=>`<marker id="m${i}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="${g.c}"/></marker>`).join('')}<marker id="m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#ff4d5e"/></marker></defs>`;
+ ST.forEach((g,i)=>{s+=`<rect x="${20+cw*i+4}" y="8" width="${cw-8}" height="${H-16}" rx="8" fill="${g.c}" opacity=".06"/><text x="${20+cw*i+cw/2}" y="30" fill="${g.c}" style="font:600 13px system-ui;text-anchor:middle">${esc(g.n)}</text>`});
+ tl.forEach((e,i)=>{s+=edge(e.src,e.dst,ST[e.stage].c,'m'+e.stage,'',i,i+1,`${e.tech} ${e.tname} (${e.tactic}): ${e.desc}`)});
+ (p.next_hops||[]).forEach(h=>{s+=edge(h.from,h.to,'#ff4d5e','m5','pred',-1,'?','Could reach next: '+h.why)});
+ m.forEach(n=>{const ext=!priv(n.ip)&&!n.ip.includes('/'),col=n.ghost?'#ff4d5e':ST[n.stage].c;
+  s+=`<g class="nd${n.ghost?' ghost':''}" data-ip="${esc(n.ip)}">${ext?`<circle cx="${n.x}" cy="${n.y}" r="22" stroke="${col}"/>`:`<rect x="${n.x-26}" y="${n.y-20}" width="52" height="40" rx="8" stroke="${col}"/>`}<text x="${n.x}" y="${n.y+4}" style="font-size:10px">${ext?'ext':n.ip.includes('/')?'net':'host'}</text><text x="${n.x}" y="${n.y+40}">${esc(n.ip)}</text></g>`});
+ return s+'</svg>'}
+function focus(fn,rowSel){
+ document.querySelectorAll('.ed').forEach(g=>{const i=+g.dataset.i;g.classList.toggle('dim',!!fn&&!(i>=0&&fn(S.p.timeline[i])))});
+ document.querySelectorAll('.tl').forEach(r=>r.classList.toggle('on',!!fn&&fn(S.p.timeline[+r.dataset.i])))}
+
+/* ---- events ---- */
+document.addEventListener('click',e=>{
+ const t=e.target;let x;
+ if(x=t.closest('[data-go]')){S.expanded=false;location.hash='#'+x.dataset.go}
+ else if(x=t.closest('[data-status]')){S.status=x.dataset.status;home()}
+ else if(t.id==='show-more'){S.expanded=true;incident(S.p.id)}
+ else if(t.id==='export'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(S.p,null,2)],{type:'application/json'}));a.href=url;a.download='incident-'+S.p.id+'.json';a.click();URL.revokeObjectURL(url)}
+ else if(x=t.closest('[data-open]')){const id=+x.dataset.open;S.open.has(id)?S.open.delete(id):S.open.add(id);home()}
+ else if(x=t.closest('[data-stage]')){const k=+x.dataset.stage;S.stage=S.stage===k?null:k;home()}
+ else if(x=t.closest('[data-crit]')){S.crit=x.dataset.crit;home()}
+ else if(x=t.closest('.tl')){const i=+x.dataset.i;focus(ev=>ev===S.p.timeline[i])}
+ else if(x=t.closest('.nd')){const ip=x.dataset.ip;focus(ev=>ev.src===ip||ev.dst===ip)}
+ else if(x=t.closest('.ed')){const i=+x.dataset.i;if(i>=0)focus(ev=>ev===S.p.timeline[i])}
+ else if(t.id==='pause'){const l=$('.loop');l.classList.toggle('paused');const on=l.classList.contains('paused');t.setAttribute('aria-pressed',on);t.textContent=on?'Resume animation':'Pause animation'}
+ else if(t.id==='scan')scan()});
+document.addEventListener('mousemove',e=>{
+ const x=e.target.closest&&e.target.closest('[data-tip]'),tip=$('#tip');
+ if(!x){tip.style.display='none';return}
+ tip.textContent=x.dataset.tip;tip.style.display='block';
+ tip.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';tip.style.top=(e.clientY+14)+'px'});
+$('#q').addEventListener('input',e=>{S.q=e.target.value;if(!location.hash.startsWith('#incident'))home()});
+addEventListener('hashchange',route);
+async function scan(){
+ try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});poll()}
+ catch(e){$('#st').textContent='API offline: scan not started'}}
+async function poll(){
+ try{const s=await api('/scan/status');
+  $('#scan').disabled=s.running;$('#st').textContent=s.error?s.error:s.running?`scanning ${Math.round(s.percent||0)}%, ${(s.mbps||0).toFixed(1)} MB/s, ETA ${s.eta||'-'} s`:'Ready';
+  if(s.running)setTimeout(poll,2000);else load()}catch(e){}}
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role="button"]')){e.preventDefault();e.target.click()}});
+load();poll();
+</script>
+</body>
+</html>
