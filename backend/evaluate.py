@@ -62,7 +62,7 @@ def main():
             key=(step['file'],step['offset'])
             if key not in evidence: evidence[key]=get('/evidence?'+urlencode(dict(file=key[0],offset=key[1])))
     result.update(score(paths,truth,evidence))
-    result['great_gate']='PASS' if (result['detection'] is not None and result['detection']>.90 and result['labels']>.85 and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.10 and result['p95_ms']<500 and not result['stats'].get('synthetic_benchmark',False) and result['stats'].get('bytes',0)>=50_000_000_000 and result['stats']['seconds']<3600 and 0<(result['stats'].get('cgroup_peak_bytes') or 0)<8_000_000_000) else 'FAIL OR UNVERIFIED'
+    result['great_gate']='PASS' if (result['detection'] is not None and result['detection']>.90 and result['labels']>.85 and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.10 and result['p95_ms']<500 and result['stats'].get('cold_run') is True and not result['stats'].get('synthetic_benchmark',False) and result['stats'].get('bytes',0)>=50_000_000_000 and result['stats']['seconds']<3600 and 0<(result['stats'].get('cgroup_peak_bytes') or 0)<8_000_000_000) else 'FAIL OR UNVERIFIED'
     print(json.dumps(result,indent=2));return 0 if result['great_gate']=='PASS' else 1
 
 

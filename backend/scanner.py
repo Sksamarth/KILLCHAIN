@@ -71,7 +71,10 @@ def scan_range(task):
 
 
 def materialize(db, files):
-    db.execute('CREATE OR REPLACE TEMP TABLE candidates AS SELECT * FROM read_parquet(?)', [files])
+    # Read projected columns directly from Parquet instead of materializing every
+    # wide background candidate. Quote SQL literals, including apostrophes in paths.
+    paths=','.join("'"+str(p).replace("'","''")+"'" for p in files)
+    db.execute(f'CREATE OR REPLACE TEMP VIEW candidates AS SELECT * FROM read_parquet([{paths}])')
     db.execute('CREATE OR REPLACE TABLE alerts AS SELECT * FROM candidates WHERE kind=\'match\'')
     rules = db.execute("SELECT DISTINCT rule_id,kind,\"window\",threshold FROM candidates WHERE kind!='match'").fetchall()
     for rule_id, kind, window, threshold in rules:
@@ -79,8 +82,9 @@ def materialize(db, files):
         count = 'count(DISTINCT distinct_value)' if kind == 'distinct_threshold' else 'count(*)'
         db.execute(f'''CREATE OR REPLACE TEMP TABLE hits AS
             SELECT *, {count} OVER w AS hits, min(ts) OVER w AS beginning
-            FROM candidates WHERE rule_id=?
-            WINDOW w AS (PARTITION BY group_key ORDER BY ts RANGE BETWEEN {int(window)} PRECEDING AND CURRENT ROW)''', [rule_id])
+            FROM candidates WHERE rule_id=? AND group_key IN
+                (SELECT group_key FROM candidates WHERE rule_id=? GROUP BY group_key HAVING {count} >= {int(threshold)})
+            WINDOW w AS (PARTITION BY group_key ORDER BY ts RANGE BETWEEN {int(window)} PRECEDING AND CURRENT ROW)''', [rule_id,rule_id])
         # Deterministic episodes: emit one aggregate per connected interval of threshold hits.
         db.execute('''CREATE OR REPLACE TEMP TABLE episodes AS
             WITH qualifying AS (SELECT *, lag(ts) OVER (PARTITION BY group_key ORDER BY ts,"offset",file) AS prev
@@ -98,10 +102,12 @@ def materialize(db, files):
     db.execute('CREATE INDEX IF NOT EXISTS alerts_time ON alerts(ts)')
     db.execute('CREATE INDEX IF NOT EXISTS alerts_id ON alerts(alert_id)')
     db.execute('''CREATE OR REPLACE TABLE alert_evidence AS
-        SELECT a.alert_id,c.file,c."offset",c.ts,c.technique FROM alerts a JOIN candidates c
-        ON a.rule_id=c.rule_id AND a.group_key=c.group_key
-        AND ((a.kind='match' AND a.file=c.file AND a."offset"=c."offset")
-             OR (a.kind!='match' AND c.ts BETWEEN a.first_ts AND a.last_ts))''')
+        SELECT alert_id,file,"offset",ts,technique FROM alerts WHERE kind='match'
+        UNION ALL
+        SELECT a.alert_id,c.file,c."offset",c.ts,c.technique
+        FROM (SELECT * FROM alerts WHERE kind!='match') a
+        JOIN candidates c ON a.rule_id=c.rule_id AND a.group_key=c.group_key
+        AND c.ts BETWEEN a.first_ts AND a.last_ts''')
     db.execute('CREATE INDEX IF NOT EXISTS evidence_offset ON alert_evidence("offset")')
 
 
@@ -151,6 +157,7 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
     # Only publish a completed generation. Readers see the previous complete result during extraction.
     from backend.correlate import build
     source_stats=[json.loads(Path(p+'.json').read_text()) for p in outputs]
+    if progress:progress(dict(running=True,percent=100,phase='aggregating',mbps=total/1e6/max(time.monotonic()-started,.001),eta=None,peak_gb=memory[0]/1e9 if memory else peak/1e9))
     with connect(db_path) as db:
         db.execute('BEGIN TRANSACTION')
         try:
@@ -158,6 +165,9 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
             stats = dict(running=False,percent=100,mbps=total/1e6/max(time.monotonic()-started,.001),seconds=time.monotonic()-started,peak_gb=peak/1e9,bytes=total,files=len({c[0] for c in chunks}),run_id=signature)
             stats.update({k:sum(s[k] for s in source_stats) for k in ('lines','unsupported_lines','oversized_lines')})
             stats['synthetic_benchmark'] = os.environ.get('KC_SYNTHETIC_BENCHMARK')=='1'
+            stats['checkpoint_reused_chunks']=len(chunks)-len(tasks)
+            stats['cold_run']=len(chunks)==len(tasks)
+            if progress:progress(dict(running=True,percent=100,phase='correlating',eta=None))
             build(db, stats)
             stats['peak_gb'] = max(peak,memory[0] if memory else peak)/1e9
             stats['peak_scope'] = 'sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement'

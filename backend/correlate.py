@@ -1,8 +1,10 @@
 import hashlib
 import json
+import heapq
 from collections import Counter, defaultdict
 
 import yaml
+import pyarrow as pa
 
 from backend.graph import criticality, path_for
 from backend.rules import ROOT
@@ -77,7 +79,15 @@ def build(db, stats):
     access = records(db.execute('SELECT * FROM access_history'))
     db.execute('DELETE FROM incident_paths')
     db.execute('CREATE OR REPLACE TABLE incident_alerts (incident_id VARCHAR, alert_id VARCHAR)')
-    incidents, paths = [], []
+    top={'active':[],'suppressed':[]};paths=[];memberships=[]
+    active_count=critical_count=suppressed_count=0;risky_users=set()
+    def flush():
+        if paths:
+            table=pa.table({name:[row[i] for row in paths] for i,name in enumerate(('incident_id','status','risk','path_json'))})
+            db.register('_path_batch',table);db.execute('INSERT INTO incident_paths SELECT * FROM _path_batch');db.unregister('_path_batch');paths.clear()
+        if memberships:
+            table=pa.table({'incident_id':[r[0] for r in memberships],'alert_id':[r[1] for r in memberships]})
+            db.register('_member_batch',table);db.execute('INSERT INTO incident_alerts SELECT * FROM _member_batch');db.unregister('_member_batch');memberships.clear()
     for group in components(alerts,config):
         if len(group) > config['max_component_alerts']: raise ValueError('Incident exceeds configured component limit')
         sequence_ids, bonus = sequences(group,specs)
@@ -97,26 +107,36 @@ def build(db, stats):
                     hosts=len(ips),ips=ips,users=sorted({a['user'] for a in group if a['user']}),summary=path['report'],status=status,
                     suppress_reason=reason,sequence_ids=sequence_ids)
         path.update(item)
-        incidents.append(item); paths.append((iid,status,score,json.dumps(path)))
-        db.executemany('INSERT INTO incident_alerts VALUES (?,?)',[(iid,a['alert_id']) for a in group])
-    if paths: db.executemany('INSERT INTO incident_paths VALUES (?,?,?,?)',paths)
+        if status=='active':
+            active_count+=1;critical_count+=int(score>=75)
+            if score>=75:risky_users.update(item['users'])
+        else:suppressed_count+=1
+        heapq.heappush(top[status],(score,-int(iid),item))
+        if len(top[status])>100:heapq.heappop(top[status])
+        paths.append((iid,status,score,json.dumps(path)))
+        memberships.extend((iid,a['alert_id']) for a in group)
+        if len(paths)>=128 or len(memberships)>=8192:flush()
+    flush()
     db.execute('CREATE INDEX IF NOT EXISTS membership_incident ON incident_alerts(incident_id)')
-    incidents.sort(key=lambda i:(-i['score'],i['id']))
-    active = [i for i in incidents if i['status']=='active']
+    incidents=sorted([t[2] for heap in top.values() for t in heap],key=lambda i:(-i['score'],i['id']))
     stages = [dict(critical=0,total=0) for _ in range(5)]
-    tactics, assets = {}, {}
+    tactics = {}
     for a in alerts:
         stage=stages[a['stage_order']]; stage['total']+=1; stage['critical']+=int(a['weight']*10>=75)
         tac=tactics.setdefault(a['tactic'],dict(tactic=a['tactic'],critical=0,non_critical=0))
         tac['critical' if a['weight']*10>=75 else 'non_critical']+=1
-        for ip in {a['src_ip'],a['dst_ip']} - {''}:
-            asset=assets.setdefault(ip,dict(ip=ip,score=0,stage_counts=[0]*5,top={}))
-            asset['stage_counts'][a['stage_order']]+=1
-            if a['weight']*10>asset['score']: asset.update(score=a['weight']*10,top=dict(tech=a['technique'],desc=a['rule_name']))
-    risky_users={u for i in active if i['score']>=75 for u in i['users']}
-    overview=dict(totals=dict(incidents=len(active),incidents_critical=sum(i['score']>=75 for i in active),alerts=len(alerts),
-                      alerts_critical=sum(a['weight']*10>=75 for a in alerts),assets=len(assets),assets_risky=sum(a['score']>=75 for a in assets.values()),
-                      users=len({a['user'] for a in alerts if a['user']}),users_risky=len(risky_users),suppressed=len(incidents)-len(active)),
-                  stages=stages,tactics=list(tactics.values()),incidents=active[:100]+[i for i in incidents if i['status']=='suppressed'][:100],assets=sorted(assets.values(),key=lambda a:-a['score'])[:100],scan=stats,
+    db.execute('''CREATE OR REPLACE TEMP TABLE asset_summary AS
+        WITH entities AS (SELECT src_ip ip,technique,rule_name,stage_order,weight FROM alerts WHERE src_ip!=''
+            UNION ALL SELECT dst_ip ip,technique,rule_name,stage_order,weight FROM alerts WHERE dst_ip!='' AND dst_ip!=src_ip)
+        SELECT ip,max(weight)*10 score,
+            list_value(count_if(stage_order=0),count_if(stage_order=1),count_if(stage_order=2),count_if(stage_order=3),count_if(stage_order=4)) stage_counts,
+            arg_max(technique,weight) tech,arg_max(rule_name,weight) description FROM entities GROUP BY ip''')
+    asset_count,risky_asset_count=db.execute('SELECT count(*),count_if(score>=75) FROM asset_summary').fetchone()
+    assets=records(db.execute('SELECT * FROM asset_summary ORDER BY score DESC,ip LIMIT 100'))
+    for a in assets:a['top']={'tech':a.pop('tech'),'desc':a.pop('description')}
+    overview=dict(totals=dict(incidents=active_count,incidents_critical=critical_count,alerts=len(alerts),
+                      alerts_critical=sum(a['weight']*10>=75 for a in alerts),assets=asset_count,assets_risky=risky_asset_count or 0,
+                      users=len({a['user'] for a in alerts if a['user']}),users_risky=len(risky_users),suppressed=suppressed_count),
+                  stages=stages,tactics=list(tactics.values()),incidents=incidents,assets=assets,scan=stats,
                   limits=dict(incidents_per_status=100,assets=100))
     db.execute('INSERT OR REPLACE INTO cache VALUES (?,?)',['overview',json.dumps(overview)])

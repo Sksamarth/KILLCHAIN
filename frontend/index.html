@@ -109,6 +109,7 @@ input,button{border-radius:7px;padding:8px 12px;font-size:12px}button.go{backgro
 <div id="banner"></div>
 <main><div class="hero"><div><div class="eyebrow">Security operations / Attack intelligence</div><h1>See the attack. Connect the story.</h1><p>From scattered signals to evidence-backed attack paths.</p></div><span class="pill" id="connection">Connecting to analysis engine</span></div><div id="view" aria-live="polite"></div><div class="footer"><span>KILLCHAIN XDR · DETERMINISTIC ANALYSIS</span><span>Every finding traces back to log evidence</span></div></main>
 <div id="tip"></div>
+<dialog id="auth" style="background:var(--p);color:var(--t);border:1px solid var(--b);border-radius:14px;max-width:400px;padding:24px"><form id="auth-form"><h3>API access key</h3><p class="r2">Stored only in this browser tab. Clear the field to remove it.</p><input id="auth-key" type="password" autocomplete="off" aria-label="API access key" style="width:100%"><p><button class="go" type="submit">Save key</button> <button id="auth-cancel" type="button">Cancel</button></p></form></dialog>
 <script>
 /* Backend contract (nginx proxies /api/ to FastAPI):
    GET /api/overview -> {totals:{incidents,incidents_critical,alerts,alerts_critical,assets,assets_risky,users,users_risky},
@@ -263,7 +264,8 @@ document.addEventListener('click',e=>{
  if(x=t.closest('[data-go]')){S.expanded=false;location.hash='#'+x.dataset.go}
  else if(x=t.closest('[data-status]')){S.status=x.dataset.status;S.searchResults=null;searchIncidents()}
  else if(t.id==='show-more'){S.expanded=true;incident(S.p.id)}
- else if(t.id==='access'){const key=prompt('API access token (stored only in this tab). Leave empty to clear.');if(key!==null){key?sessionStorage.setItem('kc-token',key):sessionStorage.removeItem('kc-token');load()}}
+ else if(t.id==='access'){$('#auth-key').value='';$('#auth').showModal()}
+ else if(t.id==='auth-cancel')$('#auth').close();
  else if(t.id==='export'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(S.p,null,2)],{type:'application/json'}));a.href=url;a.download='incident-'+S.p.id+'.json';a.click();URL.revokeObjectURL(url)}
  else if(x=t.closest('[data-open]')){const id=+x.dataset.open;S.open.has(id)?S.open.delete(id):S.open.add(id);home()}
  else if(x=t.closest('[data-stage]')){const k=+x.dataset.stage;S.stage=S.stage===k?null:k;home()}
@@ -279,17 +281,18 @@ document.addEventListener('mousemove',e=>{
  tip.textContent=x.dataset.tip;tip.style.display='block';
  tip.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';tip.style.top=(e.clientY+14)+'px'});
 let searchTimer,searchVersion=0;
-async function searchIncidents(){const version=++searchVersion;try{S.searchResults=S.q&&!S.demo?await api('/incidents?limit=100&status='+S.status+'&search='+encodeURIComponent(S.q)):null;if(version===searchVersion&&!location.hash.startsWith('#incident'))home()}catch(e){$('#st').textContent='Search unavailable'}}
+async function searchIncidents(){const version=++searchVersion;try{const result=S.q&&!S.demo?await api('/incidents?limit=100&status='+S.status+'&search='+encodeURIComponent(S.q)):null;if(version!==searchVersion)return;S.searchResults=result;if(!location.hash.startsWith('#incident'))home()}catch(e){$('#st').textContent='Search unavailable'}}
 $('#q').addEventListener('input',e=>{S.q=e.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(searchIncidents,200)});
 addEventListener('hashchange',route);
 async function scan(){
  try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});poll()}
- catch(e){$('#st').textContent='API offline: scan not started'}}
+ catch(e){$('#st').textContent='Scan could not start ('+e.message+'). Check the path, access key, or running job.'}}
 async function poll(){
  try{const s=await api('/scan/status');
   $('#scan').disabled=s.running;$('#st').textContent=s.error?s.error:s.running?`scanning ${Math.round(s.percent||0)}%, ${(s.mbps||0).toFixed(1)} MB/s, ETA ${s.eta||'-'} s`:'Ready';
   if(s.running)setTimeout(poll,2000);else load()}catch(e){}}
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role="button"]')){e.preventDefault();e.target.click()}});
+$('#auth-form').addEventListener('submit',e=>{e.preventDefault();const key=$('#auth-key').value;key?sessionStorage.setItem('kc-token',key):sessionStorage.removeItem('kc-token');$('#auth').close();load()});
 load();poll();
 </script>
 </body>
