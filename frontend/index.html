@@ -197,6 +197,34 @@ async function load(){
  $('#connection').textContent=connectionError?'Analysis engine disconnected':'Analysis engine connected';route()
 }
 let dismissedSimulation='';
+let finalAI={generation:'',result:null,error:'',busy:false},autoFinalReport=false;
+function reportGeneration(){return (S.d?.scan?.run_id||'')+':'+(S.d?.scan?.publication_digest||'')}
+function finalReportPanel(){return `<section class="panel" id="final-report"><div class="hd"><h3>Final AI analysis</h3><div><button id="final-ai-generate" ${finalAI.busy?'disabled':''}>${finalAI.busy?'Analyzing…':'Generate report'}</button> <button id="final-ai-download" ${finalAI.result?'':'hidden'}>Download report</button></div></div><p class="rep">A review of up to eight highest-risk incidents after scanning. Sends at most 12 KB of pseudonymized metadata to Google Gemini. Free-tier content may be used to improve products.</p><div id="final-ai-content" class="rep" aria-live="polite"></div></section>`}
+function renderFinalReport(){
+ const target=$('#final-ai-content');if(!target)return;
+ const button=$('#final-ai-generate');if(button){button.disabled=finalAI.busy;button.textContent=finalAI.busy?'Analyzing…':'Generate report'}
+ if($('#final-ai-download'))$('#final-ai-download').hidden=!finalAI.result;
+ if(finalAI.busy){target.textContent='Preparing the final analysis. Your completed scan results remain available.';return}
+ if(finalAI.error){target.textContent=finalAI.error;return}
+ const r=finalAI.result;if(!r){target.textContent='Generate an evidence-linked summary and recommended investigation steps. AI opinions do not change measured validation scores.';return}
+ const v=r.review;
+ target.innerHTML='<p><b>'+esc(v.assessment.replaceAll('_',' '))+'</b> · '+(r.cached?'Cached report':'New report')+' · '+num(r.metadata_bytes)+' metadata bytes</p><p>'+num(r.sampled_incidents)+' of '+num(r.total_active_incidents)+' active incidents sampled. '+esc(r.validation_status)+'</p><p>'+esc(v.summary)+'</p><h4>Findings</h4><ul>'+v.findings.map(f=>'<li>'+esc(f.explanation)+'<div class="r2">'+f.evidence_ids.map(eid=>{const ref=r.evidence[eid];return ref?'<a href="#incident/'+encodeURIComponent(ref.incident_id)+'">'+esc(eid+' · Incident '+ref.incident_id)+'</a>':esc(eid)}).join(' · ')+'</div></li>').join('')+'</ul><h4>Recommended next steps</h4><ol>'+v.next_steps.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ol><h4>Limitations</h4><ul>'+v.limitations.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
+}
+async function generateFinalReport(){
+ if(finalAI.busy||!S.d)return;
+ const generation=reportGeneration();finalAI={generation,result:null,error:'',busy:true};renderFinalReport();
+ try{const result=await api('/ai/final-report',{method:'POST'});if(generation===reportGeneration()){
+  const returned=(result.run_id||'')+':'+(result.publication_digest||'');
+  if(returned!==generation)throw new Error('Scan results changed. Refresh the dashboard and generate again.');
+  finalAI.result=result;
+ }}catch(e){if(generation===reportGeneration())finalAI.error='Final AI report unavailable: '+e.message}
+ finally{if(finalAI.generation===generation){finalAI.busy=false;renderFinalReport()}}
+}
+function downloadFinalReport(){
+ const r=finalAI.result;if(!r)return;const v=r.review;
+ const text=['# Final AI analysis','',v.summary,'',`Scope: ${r.sampled_incidents} of ${r.total_active_incidents} active incidents sampled.`,r.validation_status,'', '## Findings',...v.findings.map(f=>'- '+f.explanation+' ['+f.evidence_ids.map(id=>id+': incident '+r.evidence[id].incident_id+', alert '+r.evidence[id].alert_id).join('; ')+']'),'', '## Recommended next steps',...v.next_steps.map(x=>'- '+x),'','## Limitations',...v.limitations.map(x=>'- '+x),'','## Measured scan statistics',JSON.stringify(r.scan,null,2),'','AI interpretation is not ground truth or a hackathon certification.'].join('\n');
+ const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type:'text/markdown;charset=utf-8'}));a.href=url;a.download='killchain-final-report.md';a.click();URL.revokeObjectURL(url);
+}
 function simulationNoticeKey(){return S.d?.scan?.run_id||'records-'+(S.d?.scan?.synthetic_lines||0)}
 function renderNotices(){
  const key=simulationNoticeKey();
@@ -229,6 +257,7 @@ function tactics(){
   return`<div class="bar" data-stage="${r.st}" data-tip="${esc(r.n)}: ${r.c} critical, ${r.o} other"><div class="stk"><i style="height:${c/mx*100}%;background:${col}"></i><i style="height:${o/mx*100}%;background:${col};opacity:.4"></i></div><span>${esc(r.n)}</span></div>`}).join('')}</div>`}
 function home(){
  if(!S.d)return;
+ if(finalAI.generation!==reportGeneration())finalAI={generation:reportGeneration(),result:null,error:'',busy:false};
  S.overviewGraph?.destroy();
  const d=S.d,t=d.totals,sf=S.stage,q=S.q.toLowerCase(),sc=d.scan||{};
  const inc=(S.searchResults||d.incidents).filter(i=>(i.status||'active')===S.status&&(sf==null||i.stage_counts[sf]>0)&&(S.searchResults!==null||!q||(String(i.id)+' '+i.name+' '+(i.ips||[]).join(' ')+' '+(i.users||[]).join(' ')).toLowerCase().includes(q)));
@@ -238,6 +267,7 @@ function home(){
  <div class="cards">${card('Incidents',t.incidents_critical,t.incidents,'Critical','#ff4d5e')}${card('Alerts',t.alerts_critical,t.alerts,'Critical','#ffb020')}${card('Assets',t.assets_risky,t.assets,'Risky','#a77bff')}${card('Users',t.users_risky,t.users,'Risky','#2ec4b6')}
  <div class="card"><h4>Last scan</h4><div class="big">${sc.seconds?Math.floor(sc.seconds/60)+'m '+Math.round(sc.seconds%60)+'s':'?'}</div><div class="sub"><span>${sc.cold_run===false?'Resumed analysis':sc.mbps?sc.mbps.toFixed(1)+' MB/s':'No completed scan'}</span><span>${sc.peak_gb!=null?Number(sc.peak_gb).toFixed(2)+' GB peak':''}</span></div></div></div>
  <div id="overview-map"></div>
+ ${finalReportPanel()}
  ${killChain(d,sf)}
  <div class="filters"><button data-status="active" class="${S.status==='active'?'on':''}">Active incidents</button><button data-status="suppressed" class="${S.status==='suppressed'?'on':''}">Suppressed · ${num(t.suppressed)}</button></div>
  <div class="grid">
@@ -249,6 +279,7 @@ function home(){
  </div>
  <section class="panel tact"><div class="hd"><h3>Alerts by tactic</h3><span class="leg">${[['all','All'],['critical','Critical'],['non','Other']].map(([k,l])=>`<button data-crit="${k}" class="${S.crit===k?'on':''}">${l}</button>`).join('')}</span></div>${tactics()}</section>`;
  if(globalThis.OverviewGraph)S.overviewGraph=OverviewGraph.mount($('#overview-map'),{api,generation:(sc.run_id||'empty')+':'+(sc.publication_digest||'')});
+ renderFinalReport();
 }
 
 /* ---- incident view with attack path graph ---- */
@@ -291,6 +322,8 @@ document.addEventListener('click',e=>{
  else if(t.id==='show-more'){S.expanded=true;incident(S.p.id)}
  else if(t.id==='access'){$('#auth-key').value='';$('#auth').showModal()}
  else if(t.id==='ai-review')reviewIncident()
+ else if(t.id==='final-ai-generate')generateFinalReport()
+ else if(t.id==='final-ai-download')downloadFinalReport()
  else if(t.id==='auth-cancel')$('#auth').close();
  else if(t.id==='dismiss-simulation'){dismissedSimulation=simulationNoticeKey();try{localStorage.setItem('kc-dismissed-simulation',dismissedSimulation)}catch{}renderNotices()}
  else if(t.id==='export'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(S.p,null,2)],{type:'application/json'}));a.href=url;a.download='incident-'+S.p.id+'.json';a.click();URL.revokeObjectURL(url)}
@@ -325,14 +358,14 @@ function renderScanProgress(s){
 }
 async function scan(){
  $('#scan').disabled=true;
- try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});renderScanProgress({running:true,percent:0});poll()}
+ try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});autoFinalReport=true;renderScanProgress({running:true,percent:0});poll()}
  catch(e){$('#scan').disabled=false;$('#st').textContent='Scan could not start'+(e.status?' ('+e.status+')':'')+': '+e.message+(e.status===400?' Use a path inside Docker, such as /data/firex-10G.log.':'')}}
 async function poll(){
  clearTimeout(scanPollTimer);
  try{const s=await api('/scan/status');
   renderScanProgress(s);
   $('#scan').disabled=s.running;$('#st').textContent=s.error?s.error:s.running?`${s.phase||'Scanning'} ${Math.round(s.percent||0)}%, ${(s.mbps||0).toFixed(1)} MB/s, ETA ${s.eta||'-'} s`:'Ready';
-  if(s.running)scanPollTimer=setTimeout(poll,2000);else load()}catch(e){$('#st').textContent='Scan status unavailable. Reconnecting…';scanPollTimer=setTimeout(poll,5000)}}
+  if(s.running)scanPollTimer=setTimeout(poll,2000);else {await load();if(autoFinalReport){autoFinalReport=false;if(!s.error){try{const ai=await api('/ai/status');if(ai.configured)await generateFinalReport()}catch{}}}}}catch(e){$('#st').textContent='Scan status unavailable. Reconnecting…';scanPollTimer=setTimeout(poll,5000)}}
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role="button"]')){e.preventDefault();e.target.click()}});
 $('#auth-form').addEventListener('submit',e=>{e.preventDefault();const key=$('#auth-key').value;key?sessionStorage.setItem('kc-token',key):sessionStorage.removeItem('kc-token');$('#auth').close();load()});
 load();poll();

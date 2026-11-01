@@ -54,6 +54,24 @@ def test_duplicate_detection_is_an_extra_step_under_exhaustive_truth():
     assert result['unmatched_detections']==1 and result['attack_paths']==0
 
 
+def test_no_detections_cannot_be_reported_as_perfect_or_pass_release():
+    paths,truth=fixture();result=score([],truth)
+    assert result['detection']==result['attack_paths']==0
+    assert result['labels'] is None and result['false_alarms'] is None
+    measured=gate_fixture();measured.update(result)
+    assert release_gate(measured,truth)!='PASS'
+
+
+def test_missing_expected_stages_are_unmeasured_not_implicitly_correct():
+    paths,truth=fixture()
+    for step in truth['attacks'][0]['steps']:step.pop('stage')
+    result=score(paths,truth)
+    assert result['stages'] is None and result['stage_coverage']==0
+    measured=gate_fixture();measured.update(result)
+    # Stage accuracy is an FR-3 check, not an extra threshold in the seven-metric rubric.
+    assert release_gate(measured,truth)=='PASS'
+
+
 def test_aggregate_evidence_can_reference_a_contributor_in_another_file():
     paths,truth=fixture()
     step=truth['attacks'][0]['steps'][0];step.update(file='second.log',offset=55)
@@ -97,8 +115,8 @@ def gate_fixture():
 
 
 @pytest.mark.parametrize('field,value',[
-    ('detection',.9),('labels',.85),('false_alarms',.1),('attack_paths',.9),('stages',None),
-    ('stage_coverage',0),('exact_membership_checked',False),('p95_ms',500),('p95_ms',None),
+    ('detection',.9),('labels',.85),('false_alarms',.1),('attack_paths',.9),
+    ('exact_membership_checked',False),('p95_ms',500),('p95_ms',None),
     ('cold_run',False),('bytes',49_999_999_999),('bytes',None),('seconds',3600),('seconds',0),('seconds',None),
     ('false_alarms',-.1),('p95_ms',-1),('detection',True),
     ('cgroup_peak_bytes',None),('cgroup_peak_bytes',8_000_000_000),('synthetic_benchmark',True)])

@@ -1,0 +1,170 @@
+﻿{
+  "engine_checks_passed": true,
+  "scope": "Small synthetic fixture in an isolated database and temporary localhost API. Live dashboard data unchanged; not real-data accuracy or scale certification.",
+  "seed": 701,
+  "background_records": 80,
+  "comparisons": {
+    "detection": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "labels": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "parent_labels": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "stages": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "stage_coverage": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "attack_paths": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "false_alarms": {
+      "direct": 0.3333333333333333,
+      "http": 0.3333333333333333,
+      "matches": true
+    },
+    "merged_incidents": {
+      "direct": 0,
+      "http": 0,
+      "matches": true
+    },
+    "exact_membership_checked": {
+      "direct": true,
+      "http": true,
+      "matches": true
+    },
+    "known_benign_incidents": {
+      "direct": 1,
+      "http": 1,
+      "matches": true
+    },
+    "unmatched_detections": {
+      "direct": 2,
+      "http": 2,
+      "matches": true
+    }
+  },
+  "http_exit_code": 1,
+  "scenario_accuracy_gate": "FAIL",
+  "release_gate": "FAIL",
+  "accuracy_scope": "SYNTHETIC SCENARIO ONLY",
+  "source_sha256": "f9c2013449ba83a7ee68305734f345bba42e3df4b6ce2130095efa9d6f19f310",
+  "http_p95_ms": 47.19184399800724,
+  "benign_failures": [
+    {
+      "file": "scenarios.jsonl",
+      "offset": 16158,
+      "case": "authorized_backup",
+      "alert_ids": [
+        "aa3c7107498dc5b9dc2c0ba3"
+      ]
+    },
+    {
+      "file": "scenarios.jsonl",
+      "offset": 16429,
+      "case": "authorized_backup",
+      "alert_ids": [
+        "7ee9dbbd76e15ea83b39bf00"
+      ]
+    }
+  ],
+  "rubric_checks": {
+    "seven_metrics": true,
+    "false_alarms_fail_both": true,
+    "small_fixture_not_scale_proof": true,
+    "accuracy_grades_agree": true
+  },
+  "rubric": {
+    "chosen_tier_gb": 50,
+    "metrics": {
+      "detection": {
+        "value": 1.0,
+        "unit": "fraction",
+        "good_target": "> 0.70",
+        "great_target": "> 0.90",
+        "good": "PASS",
+        "great": "PASS",
+        "reason": null
+      },
+      "correct_labels": {
+        "value": 1.0,
+        "unit": "fraction",
+        "good_target": "> 0.60",
+        "great_target": "> 0.85",
+        "good": "PASS",
+        "great": "PASS",
+        "reason": null
+      },
+      "attack_path": {
+        "value": 1.0,
+        "unit": "fraction",
+        "good_target": ">= 0.50",
+        "great_target": "== 1.00",
+        "good": "PASS",
+        "great": "PASS",
+        "reason": null
+      },
+      "false_alarms": {
+        "value": 0.3333333333333333,
+        "unit": "fraction",
+        "good_target": "< 0.30",
+        "great_target": "< 0.10",
+        "good": "FAIL",
+        "great": "FAIL",
+        "reason": null
+      },
+      "processing_time": {
+        "value": 1.8503338640002767,
+        "unit": "seconds",
+        "good_target": "< 10800",
+        "great_target": "< 3600",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Requires a cold scan of the full chosen tier with measured memory and time"
+      },
+      "memory": {
+        "value": 110440448,
+        "unit": "bytes",
+        "good_target": "< 16000000000",
+        "great_target": "< 8000000000",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Requires a cold scan of the full chosen tier with measured memory and time"
+      },
+      "investigation_speed": {
+        "value": 47.19184399800724,
+        "unit": "milliseconds",
+        "good_target": "< 2000",
+        "great_target": "< 500",
+        "good": "PASS",
+        "great": "PASS",
+        "reason": null
+      }
+    },
+    "overall_good": "FAIL",
+    "overall_great": "FAIL",
+    "certification_blockers": [
+      "Synthetic scenario results cannot certify the real dataset"
+    ],
+    "supplemental": {
+      "stage_accuracy": 1.0,
+      "stage_truth_coverage": 1.0
+    }
+  }
+}

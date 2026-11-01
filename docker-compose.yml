@@ -45,6 +45,7 @@ services:
     environment:
       API_URL: http://frontend/api
       GROUND_TRUTH: /data/ground_truth/attacks.json
+      API_TOKEN: ${API_TOKEN:-}
     volumes:
       - ${DATA_DIR:-./data}:/data:ro
     command: [python, -m, backend.evaluate]

@@ -5,7 +5,6 @@ File is a basename or path, offset an exact raw byte offset. Steps are ordered.
 """
 import argparse
 import json
-import math
 import os
 import re
 import statistics
@@ -13,6 +12,7 @@ import time
 from pathlib import Path
 
 import requests
+from backend.rubric import scorecard
 
 
 def validate_truth(truth):
@@ -105,25 +105,18 @@ def score(paths, truth, evidence=None):
                 attack_paths=rebuilt/len(truth['attacks']) if truth['attacks'] else None,false_alarms=(len(paths)-len(matched_incidents))/len(paths) if paths else None,merged_incidents=len(merged),breakdown=breakdown)
 
 
-def release_gate(result,truth):
-    stats=result.get('stats',{})
-    def number(value):return value if type(value) in (int,float) and math.isfinite(value) else float('nan')
-    checks=(not truth.get('synthetic',False),result.get('exact_membership_checked') is True,
-        number(result.get('detection'))>.90,number(result.get('labels'))>.85,
-        number(result.get('stage_coverage'))==1,number(result.get('stages'))>.85,number(result.get('attack_paths'))==1,
-        0<=number(result.get('false_alarms'))<.10,
-        0<=number(result.get('p95_ms'))<500,
-        stats.get('cold_run') is True,not stats.get('synthetic_benchmark',False),
-        number(stats.get('bytes'))>=50_000_000_000,0<number(stats.get('seconds'))<3600,
-        0<number(stats.get('cgroup_peak_bytes'))<8_000_000_000)
-    return 'PASS' if all(checks) else 'FAIL OR UNVERIFIED'
+def release_gate(result,truth,tier_gb=50):
+    return scorecard(result,truth,tier_gb)['overall_great']
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--truth',default=os.environ.get('GROUND_TRUTH','/data/ground_truth/attacks.json'));parser.add_argument('--url',default=os.environ.get('API_URL','http://frontend/api'))
+    parser.add_argument('--tier-gb',type=float,default=50,help='Full chosen tier in decimal GB (default: Extreme 50 GB)')
     args=parser.parse_args()
+    try:scorecard({},None,args.tier_gb)
+    except ValueError as exc:parser.error(str(exc))
     if not Path(args.truth).exists():
-        print(json.dumps(dict(accuracy_status='NOT MEASURED: no ground truth supplied',great_gate='UNVERIFIED'),indent=2))
+        print(json.dumps(dict(accuracy_status='NOT MEASURED: no ground truth supplied',great_gate='UNVERIFIED',rubric=scorecard({},None,args.tier_gb)),indent=2))
         return 2
     truth=json.loads(Path(args.truth).read_text())
     validate_truth(truth)
@@ -151,7 +144,8 @@ def main():
         key=(step['file'],step['offset'])
         if key not in evidence:evidence[key]=get('/evidence?'+urlencode(dict(file=key[0],offset=key[1])))
     result.update(score(paths,truth,evidence))
-    result['great_gate']=release_gate(result,truth)
+    result['rubric']=scorecard(result,truth,args.tier_gb)
+    result['great_gate']=result['rubric']['overall_great']
     result['accuracy_scope']='SYNTHETIC SCENARIO ONLY' if truth.get('synthetic') else 'Supplied independent truth; provenance must be reviewed'
     print(json.dumps(result,indent=2));return 0 if result['great_gate']=='PASS' else 1
 

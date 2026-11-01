@@ -4,6 +4,7 @@ import pytest
 import requests
 
 from backend.ai_review import MAX_PAYLOAD_BYTES,ReviewError,evidence_packet,review
+from backend.ai_review import final_packet,final_review
 
 
 def path(n=1):
@@ -92,3 +93,56 @@ def test_api_missing_key_is_clear_and_does_not_change_incident(tmp_path,monkeypa
         assert client.post('/incidents/123/ai-review').status_code==503
         assert client.get('/incidents/123/path').json()==stored
         assert client.post('/incidents/missing/ai-review').status_code==404
+
+
+def test_final_packet_caps_sampling_and_excludes_original_identifiers():
+    paths=[dict(path(100),id=f'secret-incident-{i}') for i in range(100)]
+    packet,refs=final_packet(paths,dict(bytes=50,seconds=12,path='/sensitive',run_id='secret-run'),100)
+    payload=json.dumps(packet)
+    assert len(packet['events'])==24 and packet['sampled_incidents']==8
+    assert len(payload.encode())<=MAX_PAYLOAD_BYTES
+    for secret in ('secret','198.51.100.77','finance','sensitive','password','IGNORE'):
+        assert secret not in payload
+    assert refs['e1']==dict(incident_id='secret-incident-0',alert_id='alert-0')
+    assert packet['events'][0]['source']!=packet['events'][3]['source']
+
+
+def test_final_report_has_recommendations_and_reuses_validated_cache(configured,monkeypatch):
+    calls=[]
+    def post(url,**kwargs):
+        calls.append(kwargs)
+        result=dict(answer(),next_steps=['Verify scheduled backup ownership.'])
+        return type('Response',(),dict(status_code=200,json=lambda self:dict(candidates=[dict(content=dict(parts=[dict(text=json.dumps(result))]))])))()
+    monkeypatch.setattr('backend.ai_review.requests.post',post)
+    args=([dict(path(),id='123')],dict(bytes=123,seconds=4),12)
+    result=final_review(*args)
+    assert result['review']['next_steps'] and result['sampled_incidents']==1
+    assert result['total_active_incidents']==12 and 'UNVERIFIED' in result['validation_status']
+    assert final_review(*args)['cached'] and len(calls)==1
+
+
+def test_final_report_missing_recommendations_is_rejected(configured,monkeypatch):
+    monkeypatch.setattr('backend.ai_review.requests.post',lambda *a,**k:
+        type('Response',(),dict(status_code=200,json=lambda self:dict(candidates=[dict(content=dict(parts=[dict(text=json.dumps(answer()))]))])))())
+    with pytest.raises(ReviewError):final_review([dict(path(),id='123')],{},1)
+
+
+def test_final_report_api_requires_completed_scan_and_preserves_results(configured,monkeypatch):
+    from backend.store import connect
+    from backend.api import app,state
+    from fastapi.testclient import TestClient
+    monkeypatch.delenv('API_TOKEN',raising=False)
+    monkeypatch.setitem(state,'running',False)
+    monkeypatch.setattr('backend.ai_review.requests.post',lambda *a,**k:pytest.fail('no network needed'))
+    stored=dict(path(),id='123',score=50)
+    with TestClient(app) as client:
+        assert client.post('/ai/final-report').status_code==422
+        with connect() as db:
+            db.execute('INSERT INTO incident_paths VALUES (?,?,?,?)',['123','active',50,json.dumps(stored)])
+            db.execute('INSERT INTO cache VALUES (?,?)',['stats',json.dumps(dict(run_id='run',seconds=1))])
+        monkeypatch.setitem(state,'running',True)
+        assert client.post('/ai/final-report').status_code==409
+        monkeypatch.setitem(state,'running',False)
+        monkeypatch.delenv('GEMINI_API_KEY',raising=False)
+        assert client.post('/ai/final-report').status_code==503
+        assert client.get('/incidents/123/path').json()==stored

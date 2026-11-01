@@ -10,6 +10,7 @@ import random
 from pathlib import Path
 
 from backend.evaluate import score
+from backend.rubric import scorecard
 from backend.scanner import run
 from backend.store import connect,records
 
@@ -88,6 +89,7 @@ def validate(folder,seed=701,background=2000):
         benign_record_false_positive_rate=len(failures)/len(benign_hits) if benign_hits else None,
         benign_failures=failures,
         accuracy_gate='PASS' if result['detection'] and result['detection']>.9 and result['labels']>.85 and result['stages']==1 and result['exact_membership_checked'] and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.1 else 'FAIL')
+    result['rubric']=scorecard(result,truth)
     (folder/'results.json').write_text(json.dumps(result,indent=2),encoding='utf8')
     return result
 

@@ -45,12 +45,17 @@ def audit(output,seed=701,background=80):
     keys=('detection','labels','parent_labels','stages','stage_coverage','attack_paths','false_alarms',
           'merged_incidents','exact_membership_checked','known_benign_incidents','unmatched_detections')
     comparisons={key:dict(direct=direct[key],http=http[key],matches=direct[key]==http[key]) for key in keys}
-    result=dict(engine_checks_passed=all(item['matches'] for item in comparisons.values()) and evaluated.returncode==1 and http['great_gate']!='PASS',
+    rubric_checks=dict(seven_metrics=len(http['rubric']['metrics'])==7,
+        false_alarms_fail_both=all(http['rubric']['metrics']['false_alarms'][level]=='FAIL' for level in ('good','great')),
+        small_fixture_not_scale_proof=http['rubric']['metrics']['processing_time']['great']=='UNVERIFIED',
+        accuracy_grades_agree=all(direct['rubric']['metrics'][key][level]==http['rubric']['metrics'][key][level]
+            for key in ('detection','correct_labels','attack_path','false_alarms') for level in ('good','great')))
+    result=dict(engine_checks_passed=all(item['matches'] for item in comparisons.values()) and all(rubric_checks.values()) and evaluated.returncode==1 and http['great_gate']!='PASS',
         scope='Small synthetic fixture in an isolated database and temporary localhost API. Live dashboard data unchanged; not real-data accuracy or scale certification.',
         seed=seed,background_records=background,comparisons=comparisons,http_exit_code=evaluated.returncode,
         scenario_accuracy_gate=direct['accuracy_gate'],release_gate=http['great_gate'],accuracy_scope=http['accuracy_scope'],
         source_sha256=direct['source_sha256'],http_p95_ms=http['p95_ms'],
-        benign_failures=direct['benign_failures'])
+        benign_failures=direct['benign_failures'],rubric_checks=rubric_checks,rubric=http['rubric'])
     (folder/'http-evaluation.json').write_text(json.dumps(http,indent=2),encoding='utf8')
     (folder/'engine-audit.json').write_text(json.dumps(result,indent=2),encoding='utf8')
     return result

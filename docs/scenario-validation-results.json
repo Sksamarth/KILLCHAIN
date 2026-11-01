@@ -1,17 +1,16 @@
 ﻿[
     {
-        "seed":  701,
-        "scope":  "Synthetic scenario validation only; not real-data accuracy or a 15/50 GB release pass",
-        "source_sha256":  "4eb1750e9eb5c02731616c2cf388a52b0d8a23f72ffffe446af9964efff9d526",
         "detection":  1.0,
         "labels":  1.0,
+        "parent_labels":  1.0,
+        "stages":  1.0,
+        "stage_coverage":  1.0,
+        "exact_membership_checked":  true,
+        "known_benign_incidents":  1,
+        "unmatched_detections":  2,
         "attack_paths":  1.0,
         "false_alarms":  0.3333333333333333,
-        "active_incidents":  3,
-        "benign_records":  2202,
-        "benign_records_in_active_incidents":  2,
-        "benign_record_false_positive_rate":  0.0009082652134423251,
-        "accuracy_gate":  "FAIL",
+        "merged_incidents":  0,
         "breakdown":  [
                           {
                               "attack":  "credential-to-exfiltration",
@@ -21,85 +20,108 @@
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  453,
-                                                             "technique":  "T1110.001"
+                                                             "technique":  "T1110.001",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  10059,
-                                                             "technique":  "T1078"
+                                                             "technique":  "T1078",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  11910,
-                                                             "technique":  "T1136.001"
+                                                             "technique":  "T1136.001",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  14401,
-                                                             "technique":  "T1548.003"
+                                                             "technique":  "T1548.003",
+                                                             "stage":  3
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  17497,
-                                                             "technique":  "T1046"
+                                                             "technique":  "T1046",
+                                                             "stage":  2
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  27731,
-                                                             "technique":  "T1021"
+                                                             "technique":  "T1021",
+                                                             "stage":  3
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  31247,
-                                                             "technique":  "T1560"
+                                                             "technique":  "T1560",
+                                                             "stage":  2
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  33972,
-                                                             "technique":  "T1041"
+                                                             "technique":  "T1041",
+                                                             "stage":  4
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  36516,
-                                                             "technique":  "T1070.003"
+                                                             "technique":  "T1070.003",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             }
                                         ],
-                              "merged_with_other_attack":  false
+                              "incident_ids":  [
+                                                   "62380223527045"
+                                               ],
+                              "merged_with_other_attack":  false,
+                              "known_benign_in_path":  false,
+                              "unexpected_steps":  false
                           },
                           {
                               "attack":  "spray-to-beacon",
@@ -109,40 +131,58 @@
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  80484,
-                                                             "technique":  "T1110.003"
+                                                             "technique":  "T1110.003",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  88672,
-                                                             "technique":  "T1078"
+                                                             "technique":  "T1078",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  94655,
-                                                             "technique":  "T1071"
+                                                             "technique":  "T1071",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             }
                                         ],
-                              "merged_with_other_attack":  false
+                              "incident_ids":  [
+                                                   "6986485409922"
+                                               ],
+                              "merged_with_other_attack":  false,
+                              "known_benign_in_path":  false,
+                              "unexpected_steps":  false
                           }
                       ],
+        "scope":  "Synthetic scenario validation only; not real-data accuracy or a 15/50 GB release pass",
+        "seed":  701,
+        "source_sha256":  "4eb1750e9eb5c02731616c2cf388a52b0d8a23f72ffffe446af9964efff9d526",
+        "active_incidents":  3,
+        "benign_records":  2202,
+        "benign_records_in_active_incidents":  2,
+        "benign_record_false_positive_rate":  0.0009082652134423251,
         "benign_failures":  [
                                 {
                                     "file":  "scenarios.jsonl",
                                     "offset":  181003,
                                     "case":  "authorized_backup",
                                     "alert_ids":  [
-                                                      "b6be0ec3c092338fc9b4e091"
+                                                      "e8a4df38b2b2069b0e041f37"
                                                   ]
                                 },
                                 {
@@ -150,24 +190,24 @@
                                     "offset":  183860,
                                     "case":  "authorized_backup",
                                     "alert_ids":  [
-                                                      "70d36964782e3335beaee852"
+                                                      "8e9f6cb4d353b8539d11c6a5"
                                                   ]
                                 }
-                            ]
+                            ],
+        "accuracy_gate":  "FAIL"
     },
     {
-        "seed":  809,
-        "scope":  "Synthetic scenario validation only; not real-data accuracy or a 15/50 GB release pass",
-        "source_sha256":  "097c132f1c3ca7ca9ac401103e325c3c531f0611d5dc87f9b389f2c471ab6355",
         "detection":  1.0,
         "labels":  1.0,
+        "parent_labels":  1.0,
+        "stages":  1.0,
+        "stage_coverage":  1.0,
+        "exact_membership_checked":  true,
+        "known_benign_incidents":  1,
+        "unmatched_detections":  2,
         "attack_paths":  1.0,
         "false_alarms":  0.3333333333333333,
-        "active_incidents":  3,
-        "benign_records":  2202,
-        "benign_records_in_active_incidents":  2,
-        "benign_record_false_positive_rate":  0.0009082652134423251,
-        "accuracy_gate":  "FAIL",
+        "merged_incidents":  0,
         "breakdown":  [
                           {
                               "attack":  "credential-to-exfiltration",
@@ -177,85 +217,108 @@
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  719,
-                                                             "technique":  "T1110.001"
+                                                             "technique":  "T1110.001",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  10926,
-                                                             "technique":  "T1078"
+                                                             "technique":  "T1078",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  13542,
-                                                             "technique":  "T1136.001"
+                                                             "technique":  "T1136.001",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  15390,
-                                                             "technique":  "T1548.003"
+                                                             "technique":  "T1548.003",
+                                                             "stage":  3
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  17343,
-                                                             "technique":  "T1046"
+                                                             "technique":  "T1046",
+                                                             "stage":  2
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  26867,
-                                                             "technique":  "T1021"
+                                                             "technique":  "T1021",
+                                                             "stage":  3
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  29644,
-                                                             "technique":  "T1560"
+                                                             "technique":  "T1560",
+                                                             "stage":  2
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  32131,
-                                                             "technique":  "T1041"
+                                                             "technique":  "T1041",
+                                                             "stage":  4
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  34932,
-                                                             "technique":  "T1070.003"
+                                                             "technique":  "T1070.003",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             }
                                         ],
-                              "merged_with_other_attack":  false
+                              "incident_ids":  [
+                                                   "262649394737387"
+                                               ],
+                              "merged_with_other_attack":  false,
+                              "known_benign_in_path":  false,
+                              "unexpected_steps":  false
                           },
                           {
                               "attack":  "spray-to-beacon",
@@ -265,40 +328,58 @@
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  75490,
-                                                             "technique":  "T1110.003"
+                                                             "technique":  "T1110.003",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  83133,
-                                                             "technique":  "T1078"
+                                                             "technique":  "T1078",
+                                                             "stage":  0
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             },
                                             {
                                                 "step":  {
                                                              "file":  "scenarios.jsonl",
                                                              "offset":  91699,
-                                                             "technique":  "T1071"
+                                                             "technique":  "T1071",
+                                                             "stage":  1
                                                          },
                                                 "found":  true,
-                                                "correct":  true
+                                                "correct":  true,
+                                                "stage_correct":  true
                                             }
                                         ],
-                              "merged_with_other_attack":  false
+                              "incident_ids":  [
+                                                   "21727776373808"
+                                               ],
+                              "merged_with_other_attack":  false,
+                              "known_benign_in_path":  false,
+                              "unexpected_steps":  false
                           }
                       ],
+        "scope":  "Synthetic scenario validation only; not real-data accuracy or a 15/50 GB release pass",
+        "seed":  809,
+        "source_sha256":  "097c132f1c3ca7ca9ac401103e325c3c531f0611d5dc87f9b389f2c471ab6355",
+        "active_incidents":  3,
+        "benign_records":  2202,
+        "benign_records_in_active_incidents":  2,
+        "benign_record_false_positive_rate":  0.0009082652134423251,
         "benign_failures":  [
                                 {
                                     "file":  "scenarios.jsonl",
                                     "offset":  179169,
                                     "case":  "authorized_backup",
                                     "alert_ids":  [
-                                                      "18840eda8321afdd5302048f"
+                                                      "1d8a66aa0eef0250f74b961e"
                                                   ]
                                 },
                                 {
@@ -306,9 +387,10 @@
                                     "offset":  181791,
                                     "case":  "authorized_backup",
                                     "alert_ids":  [
-                                                      "7321051d6a98464051d4c93f"
+                                                      "0319d0437ffe794f19fbfb97"
                                                   ]
                                 }
-                            ]
+                            ],
+        "accuracy_gate":  "FAIL"
     }
 ]

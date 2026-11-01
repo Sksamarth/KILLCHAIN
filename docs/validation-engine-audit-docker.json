@@ -65,7 +65,7 @@
   "release_gate": "FAIL OR UNVERIFIED",
   "accuracy_scope": "SYNTHETIC SCENARIO ONLY",
   "source_sha256": "f9c2013449ba83a7ee68305734f345bba42e3df4b6ce2130095efa9d6f19f310",
-  "http_p95_ms": 31.379361000290373,
+  "http_p95_ms": 44.33945599885192,
   "benign_failures": [
     {
       "file": "scenarios.jsonl",

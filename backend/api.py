@@ -153,6 +153,22 @@ def ai_review(incident_id: str):
     except ReviewError as exc:raise HTTPException(exc.status,exc.message) from None
 
 
+@app.post('/ai/final-report')
+def final_ai_report():
+    from backend.ai_review import final_review,ReviewError
+    if state.get('running'):raise HTTPException(409,'Wait for the scan to complete before generating the final report')
+    # Take one consistent completed-data snapshot, then release DuckDB before AI egress.
+    with connect() as db:
+        row=db.execute("SELECT value FROM cache WHERE key='stats'").fetchone()
+        scan=json.loads(row[0]) if row else {}
+        if not scan:raise HTTPException(422,'Complete a scan before generating the final report')
+        total=db.execute("SELECT count(*) FROM incident_paths WHERE status='active'").fetchone()[0]
+        ids=[row[0] for row in db.execute("SELECT incident_id FROM incident_paths WHERE status='active' ORDER BY risk DESC,incident_id LIMIT 8").fetchall()]
+        paths=[incident_path(incident_id) for incident_id in ids]
+    try:return dict(**final_review(paths,scan,total),run_id=scan.get('run_id'),publication_digest=scan.get('publication_digest'))
+    except ReviewError as exc:raise HTTPException(exc.status,exc.message) from None
+
+
 @app.get('/incidents/{incident_id}/alerts')
 def alerts(incident_id: str,offset: int=Query(0,ge=0),limit: int=Query(100,ge=1,le=1000)):
     incident_path(incident_id)

@@ -1,0 +1,81 @@
+﻿{
+  "accuracy_status": "NOT MEASURED: no ground truth supplied",
+  "great_gate": "UNVERIFIED",
+  "rubric": {
+    "chosen_tier_gb": 50,
+    "metrics": {
+      "detection": {
+        "value": null,
+        "unit": "fraction",
+        "good_target": "> 0.70",
+        "great_target": "> 0.90",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Independent planted-attack ground truth is missing"
+      },
+      "correct_labels": {
+        "value": null,
+        "unit": "fraction",
+        "good_target": "> 0.60",
+        "great_target": "> 0.85",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Independent planted-attack ground truth is missing"
+      },
+      "attack_path": {
+        "value": null,
+        "unit": "fraction",
+        "good_target": ">= 0.50",
+        "great_target": "== 1.00",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Independent planted-attack ground truth is missing"
+      },
+      "false_alarms": {
+        "value": null,
+        "unit": "fraction",
+        "good_target": "< 0.30",
+        "great_target": "< 0.10",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Independent planted-attack ground truth is missing"
+      },
+      "processing_time": {
+        "value": null,
+        "unit": "seconds",
+        "good_target": "< 10800",
+        "great_target": "< 3600",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Missing or invalid measurement"
+      },
+      "memory": {
+        "value": null,
+        "unit": "bytes",
+        "good_target": "< 16000000000",
+        "great_target": "< 8000000000",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Missing or invalid measurement"
+      },
+      "investigation_speed": {
+        "value": null,
+        "unit": "milliseconds",
+        "good_target": "< 2000",
+        "great_target": "< 500",
+        "good": "UNVERIFIED",
+        "great": "UNVERIFIED",
+        "reason": "Missing or invalid measurement"
+      }
+    },
+    "overall_good": "UNVERIFIED",
+    "overall_great": "UNVERIFIED",
+    "certification_blockers": [
+      "Independent planted-attack ground truth is missing"
+    ],
+    "supplemental": {
+      "stage_accuracy": null,
+      "stage_truth_coverage": null
+    }
+  }
+}

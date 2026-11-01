@@ -72,6 +72,8 @@ Only one scan runs at a time. Keep one Uvicorn process: DuckDB is embedded and i
 
 ## Benchmark and release measurements
 
+The [validation-engine audit](docs/VALIDATION_ENGINE_AUDIT.md) passed its direct-vs-HTTP checks and the final 168-test Docker suite. The synthetic legitimate-backup case still fails the detector's false-incident target; real-data accuracy remains unverified without independent truth. Reproduce the isolated audit with `python -m backend.validation_audit --output tmp/validation-engine-audit`.
+
 Stop the normal backend before an independent benchmark writer uses the same database volume:
 
 ```sh
@@ -97,3 +99,5 @@ The published port binds to `127.0.0.1` by default and the backend has no publis
 - **Accuracy unknown:** supply planted-attack truth and tune against it. Broad UTM/DNS rules produce many candidate findings in the sample; those are not verified attacks.
 
 Live mode and optional AI triage are deferred until the core release gates pass. All implemented detection, path ordering, risk and reporting are rule-based.
+
+Final AI analysis: the home page can generate an evidence-linked report after scanning and download it as Markdown. See [setup, privacy and API details](docs/FINAL_AI_REPORT.md).
