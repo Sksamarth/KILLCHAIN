@@ -19,7 +19,14 @@ button{cursor:pointer;background:var(--p2)}button:hover{border-color:var(--a)}
 button.go{background:var(--a);border-color:var(--a);color:#06101f;font-weight:600}
 #path{width:150px;font-family:var(--mono)}#q{width:190px}
 #st{color:var(--m);font-size:12px}
+.scan-progress{margin:18px auto 0;padding:16px 20px;max-width:1624px;background:var(--p);border:1px solid var(--b);border-radius:12px}
+.scan-progress[hidden]{display:none}.scan-progress-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:10px}.scan-progress-head strong{font-size:13px}.scan-progress-head span{color:var(--a);font-family:var(--mono)}
+.scan-progress progress{display:block;width:100%;height:10px;border:0;border-radius:8px;overflow:hidden;accent-color:var(--a);background:var(--p2)}
+.scan-progress progress::-webkit-progress-bar{background:var(--p2);border-radius:8px}.scan-progress progress::-webkit-progress-value{background:var(--a);border-radius:8px}.scan-progress progress::-moz-progress-bar{background:var(--a);border-radius:8px}
+.scan-progress p{margin:9px 0 0;color:var(--m);font-size:12px}.scan-progress.failed{border-color:var(--red)}
+@media(max-width:760px){.scan-progress{margin:14px 14px 0}}
 .ban{background:#3a2a08;color:#ffd58a;padding:6px 18px;font-size:13px;border-bottom:1px solid #5a4210}
+.simulation-notice{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#192431;color:#bdcce0;border-color:#334256}.simulation-notice button{flex-shrink:0;background:transparent;color:inherit;border-color:#536277}
 main{padding:16px 18px;max-width:1500px;margin:0 auto}
 .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px}
 .card,.panel{background:var(--p);border:1px solid var(--b);border-radius:8px;padding:12px 14px}
@@ -38,18 +45,6 @@ main{padding:16px 18px;max-width:1500px;margin:0 auto}
 .cap .chev{color:var(--m);transition:transform .15s}.cap.open .chev{transform:rotate(180deg)}
 .chip{display:inline-block;border:1px solid;border-radius:10px;padding:0 7px;margin-right:4px;font-size:12px}
 .bd p{margin:6px 0}.mono{font-family:var(--mono)}
-.loopwrap{text-align:center}
-.loop{width:100%;max-height:520px}
-.loop .seg{cursor:pointer}.loop .seg path{fill:none;stroke-width:22;stroke-linecap:round;opacity:.85}
-.loop .seg:hover path,.loop .seg.sel path{opacity:1;stroke-width:28}
-.loop .seg circle{fill:#0d1626;stroke-width:3}
-.loop .n1{font:700 13px system-ui;fill:var(--t);text-anchor:middle}.loop .n2{font:10px system-ui;fill:var(--m);text-anchor:middle}
-.loop .lab{font:600 13px system-ui;text-anchor:middle}
-.loop .ctr{font:700 18px system-ui;fill:var(--t);text-anchor:middle}.loop .ctr2{font:12px system-ui;fill:var(--m);text-anchor:middle}
-.loop .flow{fill:none;stroke:#2a3d63;stroke-width:2;stroke-dasharray:3 12;animation:fl 14s linear infinite}
-.loop.paused .flow{animation:none}
-@keyframes fl{to{stroke-dashoffset:-150}}
-@media(prefers-reduced-motion:reduce){.loop .flow{animation:none}}
 .asset{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--b)}.asset:last-child{border:0}
 .asset .ip{font-family:var(--mono);font-weight:600}.asset small{color:var(--m);display:block}
 .tact{margin-top:12px}
@@ -81,18 +76,21 @@ main{padding:16px 18px;max-width:1500px;margin:0 auto}
 ul.nx{margin:6px 0 0;padding-left:18px}ul.nx small{color:var(--m)}
 #tip{position:fixed;pointer-events:none;background:#050a14;border:1px solid var(--b);padding:6px 9px;border-radius:6px;font-size:12px;max-width:280px;display:none;z-index:9}
 @media(max-width:1100px){.grid,.two{grid-template-columns:1fr}.cards,.strip{grid-template-columns:repeat(2,1fr)}}
-/* Visual refinement: quieter surfaces, stronger hierarchy, generous spacing. */
-:root{--bg:#090d17;--p:#101725;--p2:#151f31;--b:#253149;--t:#edf2fc;--m:#94a5c1;--a:#63a5ff}
-body{background:radial-gradient(ellipse at 60% -30%,#17335a55,transparent 65%),var(--bg);font-size:13px;min-height:100vh}
-header{padding:17px 28px;gap:22px;position:sticky;top:0;z-index:5;background:#0c1322f5;backdrop-filter:blur(16px)}
-.logo{letter-spacing:-.7px;font-size:20px}.logo:before{content:'◈';font-size:28px;color:#63a5ff;vertical-align:middle;margin-right:10px}
-main{padding:26px 28px 40px;max-width:1680px}.hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0 0 24px}.eyebrow{color:var(--a);font:600 10px var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:7px}.hero h1{font-size:28px;letter-spacing:-1px;font-weight:650;margin:0 0 6px}.hero p{color:var(--m);margin:0}.pill{border:1px solid #2ec4b655;color:#7ddfd3;background:#15373455;padding:7px 12px;border-radius:30px;font-size:11px;white-space:nowrap}
-.card,.panel{border-radius:13px;padding:18px;background:linear-gradient(145deg,#141d2d,#101725);box-shadow:0 8px 28px #00000012}.cards{gap:14px;margin-bottom:20px}.card{position:relative;overflow:hidden}.card:before{content:'';position:absolute;left:0;top:20px;width:3px;height:25px;background:var(--a);border-radius:3px}.card h4{text-transform:uppercase;letter-spacing:1.2px;font-size:10px}.big{font-size:36px;font-weight:550;margin:8px 0}.meter{height:4px;margin:10px 0}.sub{gap:8px;font-size:11px}.grid{gap:18px;grid-template-columns:minmax(290px,1.05fr) minmax(380px,1.2fr) minmax(250px,.9fr)}
-.panel .hd{margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #25314988}.panel h3{color:var(--t);font-size:13px}.cap{border-color:#28344b;background:#131e30;margin-bottom:12px}.cap>.top{padding:14px 12px}.score{width:40px;height:40px;border-width:2px;font-family:var(--mono);background:#0b1220}.cap .bd{padding:0 14px 15px}.bd p{margin:10px 0;line-height:1.65}.nm b{font-size:12px}.nm small{font-size:10px;display:block;margin-top:4px}.chip{background:#0c1322;font:10px var(--mono);padding:3px 7px;margin-top:5px;border-radius:5px}
-input,button{border-radius:7px;padding:8px 12px;font-size:12px}button.go{background:linear-gradient(120deg,#80b7ff,#5699fa);color:#071429;box-shadow:0 3px 12px #3a8bff22}button.go:hover{filter:brightness(1.1)}.asset{padding:14px 0;gap:12px}.asset small{font-size:11px;margin-top:7px}.asset .ip{font-size:12px}.tact{margin-top:20px}.bars{height:180px;gap:14px}.stk i{border-radius:3px 3px 0 0}.bar span{font-size:10px;margin-top:10px;height:28px}.loop{filter:drop-shadow(0 0 12px #3480ff14)}.loop .seg path{stroke-width:15}.loop .seg:hover path,.loop .seg.sel path{stroke-width:19}.loop .seg circle{stroke-width:2}.rep{line-height:1.8;padding:16px}.tl{padding:13px 8px}.strip{margin:20px 0;gap:10px}.strip .chev2{padding:12px;border-top-width:2px}.ih h2{font-size:25px;letter-spacing:-.6px}.two{gap:18px}.ban{padding:10px 28px}.filters{display:flex;gap:6px;margin-bottom:14px}.filters .on{background:#203956;color:#8cbcff;border-color:#4979b3}.error{padding:16px;border:1px solid #b14d60;border-radius:10px;color:#ffb2bf}.footer{display:flex;justify-content:space-between;margin-top:22px;color:#71829f;font:10px var(--mono);letter-spacing:.4px}
-:focus-visible{outline:2px solid var(--a);outline-offset:3px}a{color:var(--a)}
-@media(max-width:1200px){.grid{grid-template-columns:1fr 1fr}.loopwrap{grid-row:1;grid-column:2}.grid>.panel:last-child{grid-column:1/-1}.two{grid-template-columns:1fr}.cards{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:760px){header{position:static;padding:15px;gap:12px}main{padding:20px 14px}.hero{align-items:flex-start}.hero h1{font-size:23px}.hero .pill{display:none}.grid{display:flex;flex-direction:column}.grid>.panel{width:100%}.cards{grid-template-columns:repeat(2,1fr)}.cards>.card:last-child{grid-column:1/-1}.bars{overflow-x:auto}.bar{min-width:47px}.hero p{font-size:12px}.strip{grid-template-columns:1fr 1fr}.footer{gap:12px;flex-wrap:wrap}#q{width:160px}#path{width:120px}}
+/* Analyst workspace: flat surfaces, readable tables, restrained color. */
+:root{--bg:#111418;--p:#191d23;--p2:#20262e;--b:#303740;--t:#e6e9ee;--m:#9ba5b3;--a:#8ab4eb}
+body{background:var(--bg);font-size:13px}header{padding:14px 24px;gap:16px;background:#161a20;position:sticky;top:0;z-index:5}.logo{font-size:18px;letter-spacing:-.4px}.logo b{color:var(--t)}
+input,button{border-radius:5px;padding:8px 10px;font-size:12px;background:#171b21}button.go{background:#345f91;border-color:#426d9d;color:#fff;font-weight:500}button.go:hover{background:#406e9f}button:disabled{opacity:.55;cursor:wait}#path{width:230px}#q{width:200px}
+main{max-width:1480px;padding:28px 24px 40px}.hero{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:20px}.hero h1{font-size:23px;font-weight:600;letter-spacing:-.5px;margin:0 0 5px}.hero p{color:var(--m);margin:0;font-size:12px}.pill{color:var(--m);font-size:11px;white-space:nowrap}.eyebrow{display:none}
+.cards{gap:0;border:1px solid var(--b);border-radius:6px;background:var(--p);overflow:hidden;margin-bottom:24px}.card{border:0;border-right:1px solid var(--b);border-radius:0;background:transparent;padding:18px 20px}.card:last-child{border:0}.card h4{font-size:11px;font-weight:500;color:var(--m);margin:0}.big{font-size:29px;font-weight:550;letter-spacing:-.6px;margin:8px 0}.big small{margin-left:5px;font-size:11px}.card .meter{display:none}.sub{font-size:11px;gap:8px}
+.panel{border-radius:6px;padding:18px;background:var(--p);box-shadow:none}.panel .hd{margin-bottom:16px;gap:12px}.panel h3{color:var(--t);font-weight:550;font-size:13px}.filters{display:flex;gap:6px;margin-bottom:14px}.filters button{border-color:transparent;color:var(--m)}.filters .on{color:var(--t);border-color:var(--b);background:var(--p2)}
+.grid{grid-template-columns:minmax(0,1fr) 290px;gap:18px}.side-panels{display:grid;gap:18px;min-width:0}.incident-panel{padding:18px 0 0;overflow:hidden}.incident-panel>.hd{padding:0 18px}.table-scroll{overflow-x:auto}.incident-table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}.incident-table th{font-size:10px;font-weight:500;letter-spacing:.4px;color:var(--m);padding:10px 16px;border-bottom:1px solid var(--b);background:#171b20;white-space:nowrap}.incident-table td{padding:14px 16px;border-bottom:1px solid #2a3038;vertical-align:top}.incident-table tr:last-child td{border-bottom:0}.incident-table tbody tr:hover{background:#20262d}.incident-name{color:var(--t);font-weight:500;text-decoration:none;display:block;margin-bottom:5px;max-width:460px;line-height:1.45}.incident-name:hover{color:var(--a);text-decoration:underline}.incident-table .r2{font-size:11px}.risk-tag{display:inline-block;min-width:34px;border:1px solid currentColor;border-radius:4px;text-align:center;font:600 12px var(--mono);padding:4px}.empty-state{padding:35px 18px;color:var(--m);text-align:center}.chip{font:10px var(--mono);border-radius:3px;padding:2px 5px;background:transparent;margin-top:4px}.stage-row{width:100%;text-align:left;border:0;border-radius:3px;padding:10px 0;background:transparent;display:block}.stage-row.on{background:var(--p2);padding:10px 8px}.stage-row>span{display:flex;justify-content:space-between;color:var(--m);gap:8px}.stage-row b{font-weight:500;color:var(--t)}.stage-track{height:4px;background:#303740;margin-top:9px;border-radius:2px;overflow:hidden}.stage-track i{display:block;height:100%;background:#6d8ead}.asset{padding:12px 0;gap:10px}.asset .score{width:30px;height:30px;border-radius:4px;border-width:1px;font-size:11px}.asset .ip{font-size:11px}.asset small{font-size:11px;margin-top:4px}.tact{margin-top:18px}.bars{height:135px;gap:12px;overflow-x:auto}.bar{min-width:58px}.bar span{font-size:10px;margin-top:8px;height:30px}.stk i{opacity:.65}.leg button{font-size:11px}.footer{display:flex;justify-content:space-between;margin-top:22px;color:var(--m);font-size:10px}.rep{line-height:1.75}.ih h2{font-size:20px}.two{gap:18px}.ban{padding:10px 24px}.scan-progress{border-radius:6px;box-shadow:none;max-width:1432px}.error{padding:18px;color:#edabb1;border:1px solid #694047;border-radius:6px}a{color:var(--a)}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}.side-panels{grid-template-columns:1fr 1fr}.cards{grid-template-columns:repeat(5,1fr)}.two{grid-template-columns:1fr}.card{padding:14px 12px}.sub{flex-direction:column}}
+@media(max-width:760px){header{position:static;padding:14px;gap:10px}header .sp{display:none}#q,#path{flex:1;min-width:140px;width:140px}main{padding:22px 14px}.hero{align-items:flex-start}.hero h1{font-size:21px}.hero .pill{font-size:10px}.cards{grid-template-columns:repeat(2,1fr)}.card{border-bottom:1px solid var(--b)}.card:last-child{grid-column:1/-1}.side-panels{grid-template-columns:1fr}.incident-table th,.incident-table td{padding:12px}.incident-table{min-width:620px}.footer{gap:12px;flex-wrap:wrap}.strip{grid-template-columns:1fr 1fr}.scan-progress{margin:14px 14px 0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+
+.kill-chain{margin-bottom:24px;padding:0;overflow:hidden}.chain-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 20px;border-bottom:1px solid var(--b)}.chain-heading h2{font-size:14px;font-weight:600;margin:0 0 5px}.chain-heading p{margin:0;color:var(--m);font-size:12px}.chain-tools{display:flex;align-items:center;gap:14px;white-space:nowrap;font-size:11px;color:var(--m)}.chain-scope{padding-left:14px;border-left:1px solid var(--b)}.chain-stages{display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}.chain-stage{position:relative;border:0;border-right:1px solid var(--b);border-radius:0;text-align:left;padding:18px 20px;background:transparent;min-width:0;color:var(--t)}.chain-stage:last-child{border-right:0}.chain-stage:hover{background:#222933}.chain-stage.selected{background:#263447;box-shadow:inset 0 3px var(--stage-color)}.chain-stage:focus-visible{outline-offset:-3px;z-index:1}.chain-step{display:flex;align-items:center;justify-content:space-between;gap:8px;font:10px var(--mono);color:var(--m);letter-spacing:.5px}.chain-state{font:10px system-ui;letter-spacing:0}.chain-stage.selected .chain-state{color:#c1d8f5}.chain-stage strong{display:block;font-size:13px;font-weight:550;min-height:38px;margin:12px 0 6px;line-height:1.45}.chain-count{display:flex;align-items:baseline;gap:7px;font:500 27px var(--mono);letter-spacing:-1px}.chain-count small{font:11px system-ui;color:var(--m);letter-spacing:0}.chain-distribution{display:block;height:4px;background:#303740;margin:16px 0 10px;border-radius:2px;overflow:hidden}.chain-distribution i{display:block;height:100%;background:var(--stage-color)}.chain-meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:5px;font-size:10px;color:var(--m)}.chain-critical{color:#edabb1}.chain-stage.empty .chain-count{color:#77818d}.chain-caption{padding:11px 20px;border-top:1px solid var(--b);color:var(--m);font-size:11px;background:#171b20}
+@media(max-width:1100px){.chain-stages{grid-template-columns:repeat(5,minmax(165px,1fr));overflow-x:auto}.chain-stage{padding:16px}.chain-state{display:none}}
+@media(max-width:760px){.chain-heading{align-items:flex-start;padding:16px;flex-direction:column;gap:12px}.chain-tools{width:100%;justify-content:space-between}.chain-stages{grid-template-columns:1fr;overflow:visible}.chain-stage{border-right:0;border-bottom:1px solid var(--b);padding:14px 16px}.chain-stage:last-child{border-bottom:0}.chain-stage strong{min-height:0;margin:8px 0}.chain-count{font-size:23px}.chain-distribution{margin:10px 0}.chain-state{display:inline}.chain-caption{padding:12px 16px}}
 </style>
 </head>
 <body>
@@ -100,16 +98,21 @@ input,button{border-radius:7px;padding:8px 12px;font-size:12px}button.go{backgro
   <div class="logo"><b>KillChain</b> XDR</div>
   <nav><a href="#home" class="on">Home</a></nav>
   <div class="sp"></div>
-  <input id="q" type="search" placeholder="Search incident or IP" aria-label="Search incidents">
-  <input id="path" value="/data" aria-label="Log folder">
+  <input id="q" type="search" placeholder="Search ID, IP, host or account" aria-label="Search incidents by ID, name, IP, host or account" maxlength="200">
+  <input id="path" value="/data" aria-label="Log file or folder" title="Use /data/firex-10G.log or a Windows path within the configured mounted data folder.">
   <button id="scan" class="go">Scan logs</button>
-  <button id="access" title="Set an API access token for this tab">Access key</button>
+  <button id="access" title="Optional API key configured by the server owner" hidden>Access key</button>
   <span id="st">idle</span>
 </header>
+<section id="scan-progress" class="scan-progress" hidden aria-label="Log scan progress">
+  <div class="scan-progress-head"><strong id="scan-phase">Scanning logs</strong><span id="scan-percent">0%</span></div>
+  <progress id="scan-bar" max="100" value="0" aria-labelledby="scan-phase"></progress>
+  <p id="scan-detail" role="status" aria-live="polite"></p>
+</section>
 <div id="banner"></div>
-<main><div class="hero"><div><div class="eyebrow">Security operations / Attack intelligence</div><h1>See the attack. Connect the story.</h1><p>From scattered signals to evidence-backed attack paths.</p></div><span class="pill" id="connection">Connecting to analysis engine</span></div><div id="view" aria-live="polite"></div><div class="footer"><span>KILLCHAIN XDR · DETERMINISTIC ANALYSIS</span><span>Every finding traces back to log evidence</span></div></main>
+<main><div class="hero"><div><div class="eyebrow">Security operations / Attack intelligence</div><h1>Security overview</h1><p>Review detections, investigate incidents, and trace source evidence.</p></div><span class="pill" id="connection">Connecting to analysis engine</span></div><div id="view" aria-live="polite"></div><div class="footer"><span>KILLCHAIN XDR · DETERMINISTIC ANALYSIS</span><span>Source evidence retained</span></div></main>
 <div id="tip"></div>
-<dialog id="auth" style="background:var(--p);color:var(--t);border:1px solid var(--b);border-radius:14px;max-width:400px;padding:24px"><form id="auth-form"><h3>API access key</h3><p class="r2">Stored only in this browser tab. Clear the field to remove it.</p><input id="auth-key" type="password" autocomplete="off" aria-label="API access key" style="width:100%"><p><button class="go" type="submit">Save key</button> <button id="auth-cancel" type="button">Cancel</button></p></form></dialog>
+<dialog id="auth" style="background:var(--p);color:var(--t);border:1px solid var(--b);border-radius:14px;max-width:400px;padding:24px"><form id="auth-form"><h3>API access key</h3><p class="r2">Only needed when the server owner sets API_TOKEN. Enter that configured value. Stored only in this browser tab; clear the field to remove it.</p><input id="auth-key" type="password" autocomplete="off" aria-label="API access key" style="width:100%"><p><button class="go" type="submit">Save key</button> <button id="auth-cancel" type="button">Cancel</button></p></form></dialog>
 <script>
 /* Backend contract (nginx proxies /api/ to FastAPI):
    GET /api/overview -> {totals:{incidents,incidents_critical,alerts,alerts_critical,assets,assets_risky,users,users_risky},
@@ -135,7 +138,7 @@ const scol=n=>n>=75?'#ff4d5e':n>=50?'#ffb020':'#3aa0ff';
 const tm=e=>e.t||new Date(e.ts*1000).toISOString().slice(11,19);
 const num=n=>Number(n||0).toLocaleString();
 
-/* ---- demo data (used only when the API is unreachable) ---- */
+/* ---- isolated template fixtures; never substituted for live API results ---- */
 const E=(t,rule,tech,tname,tactic,stage,src,dst,w,desc)=>({t,rule,tech,tname,tactic,stage,src,dst,sev:w*10,desc});
 const DEMO=[
 {id:1,name:'Admin takeover and data exfiltration',raw:1284,events:[
@@ -179,43 +182,62 @@ function overview(incs){
 
 /* ---- state, data loading ---- */
 let S={d:null,demo:false,stage:null,crit:'all',open:new Set([1]),q:'',p:null,status:'active',expanded:false,searchResults:null};
-async function api(p,o={}){const key=sessionStorage.getItem('kc-token');o.headers={...o.headers,...(key?{Authorization:'Bearer '+key}:{})};const r=await fetch('/api'+p,o);if(!r.ok)throw new Error(r.status);return r.json()}
-async function load(){try{S.d=await api('/overview');S.demo=false}catch(e){S.demo=true;S.d=overview(DEMO)}$('#connection').textContent=S.demo?'Preview · API offline':'Analysis engine connected';route()}
+async function api(p,o={}){const key=sessionStorage.getItem('kc-token');o.headers={...o.headers,...(key?{Authorization:'Bearer '+key}:{})};const r=await fetch('/api'+p,o);if(!r.ok){let detail='';try{const body=await r.json();detail=typeof body.detail==='string'?body.detail:''}catch{}const e=new Error(detail||'Request failed');e.status=r.status;throw e}return r.json()}
+let connectionError='',connectionRetry;
+async function load(){
+ clearTimeout(connectionRetry);
+ try{const health=await api('/health');$('#access').hidden=!health.authentication_required;S.d=await api('/overview');S.demo=false;connectionError=''}
+ catch(e){if(e.status===401)$('#access').hidden=false;connectionError=e.status===401?'Access key required or incorrect. Use Access key to update it.':'The analysis API is unavailable or busy. Reconnecting automatically.';connectionRetry=setTimeout(load,5000)}
+ $('#connection').textContent=connectionError?'Analysis engine disconnected':'Analysis engine connected';route()
+}
+let dismissedSimulation='';
+function simulationNoticeKey(){return S.d?.scan?.run_id||'records-'+(S.d?.scan?.synthetic_lines||0)}
+function renderNotices(){
+ const key=simulationNoticeKey();
+ let dismissed=dismissedSimulation===key;
+ try{dismissed=dismissed||localStorage.getItem('kc-dismissed-simulation')===key}catch{}
+ const notes=[];
+ if(S.d?.scan?.unmapped_report_lines)notes.push(num(S.d.scan.unmapped_report_lines)+' provider reports have no configured technique/action mapping.');
+ const simulation=S.d?.scan?.synthetic_lines&&!dismissed?'<div class="ban simulation-notice"><span>This input contains '+num(S.d.scan.synthetic_lines)+' records marked simulated. EDR provider annotations are shown as reported alerts.</span><button type="button" id="dismiss-simulation" aria-label="Dismiss simulated-data notice for this scan">Dismiss</button></div>':'';
+ $('#banner').innerHTML=connectionError?'<div class="ban">'+esc(connectionError)+(S.d?' Showing the last loaded results.':'')+'</div>':simulation+(notes.length?'<div class="ban">'+esc(notes.join(' '))+'</div>':'');
+}
 function route(){
  const m=location.hash.match(/^#incident\/(\d+)/);
- $('#banner').innerHTML=S.demo?'<div class="ban">Demo data shown: the API is not reachable. Start the backend and run a scan to see real incidents.</div>':'';
+ renderNotices();
+ if(!S.d){$('#view').innerHTML='<div class="error">No analysis results loaded. '+esc(connectionError||'Connecting to the analysis engine…')+'</div>';return}
  m?incident(+m[1]):home()}
 
 /* ---- home dashboard ---- */
 const card=(t,a,b,l,c)=>`<div class="card"><h4>${t}</h4><div class="big">${num(b)}</div><div class="meter"><i style="width:${b?a/b*100:0}%;background:${c}"></i></div><div class="sub"><span style="color:${c}">${l} ${num(a)}</span><span>Total ${num(b)}</span></div></div>`;
-function loop(){
- const d=S.d,cx=230,cy=230,r=150,pt=(a,rr)=>[cx+rr*Math.cos(a*Math.PI/180),cy+rr*Math.sin(a*Math.PI/180)];
- let s=`<svg viewBox="-60 -10 580 480" class="loop" role="img" aria-label="Kill chain loop"><circle cx="230" cy="230" r="150" class="flow"/>`;
- ST.forEach((g,i)=>{
-  const mid=-90+i*72,[x1,y1]=pt(mid-27,r),[x2,y2]=pt(mid+27,r),[bx,by]=pt(mid,r),[lx,ly]=pt(mid,i===0?200:196),st=d.stages[i]||{critical:0,total:0};
-  s+=`<g class="seg${S.stage===i?' sel':''}" data-stage="${i}" data-tip="${esc(g.n+': '+g.t.join(', '))}"><path d="M${x1},${y1}A${r},${r} 0 0 1 ${x2},${y2}" stroke="${g.c}"/><circle cx="${bx}" cy="${by}" r="30" stroke="${g.c}"/><text x="${bx}" y="${by}" class="n1">${st.critical} | ${st.total}</text><text x="${bx}" y="${by+13}" class="n2">critical | total</text><text x="${lx}" y="${ly+(i===0?0:4)}" class="lab" fill="${g.c}">${esc(g.n)}</text></g>`});
- return s+`<text x="230" y="224" class="ctr">Kill chain</text><text x="230" y="246" class="ctr2">${S.stage==null?'all stages':esc(ST[S.stage].n)}</text></svg>`}
+function killChain(d,selected){
+ const counts=ST.map((stage,k)=>({total:Number(d.stages[k]?.total)||0,critical:Number(d.stages[k]?.critical)||0}));
+ const total=counts.reduce((sum,stage)=>sum+stage.total,0);
+ return `<section class="panel kill-chain" aria-labelledby="kill-chain-title"><div class="chain-heading"><div><h2 id="kill-chain-title">XDR kill chain</h2><p>Detection coverage by stage. Select a stage to filter incidents and assets.</p></div><div class="chain-tools"><span>${num(total)} detections</span>${selected!=null?'<button id="clear-stage">Clear filter</button>':'<span class="chain-scope">All stages</span>'}</div></div>
+ <div class="chain-stages" role="group" aria-label="Filter by kill-chain stage">${ST.map((stage,k)=>{const value=counts[k],share=total?value.total/total*100:0;return `<button type="button" class="chain-stage${selected===k?' selected':''}${value.total===0?' empty':''}" data-stage="${k}" aria-pressed="${selected===k}" aria-label="${esc(stage.n)}: ${num(value.total)} detections, ${num(value.critical)} critical" style="--stage-color:${stage.c}"><span class="chain-step">STAGE ${String(k+1).padStart(2,'0')}<span class="chain-state">${selected===k?'Selected':value.total?'Observed':'No detections'}</span></span><strong>${esc(stage.n)}</strong><span class="chain-count">${num(value.total)}<small>detections</small></span><span class="chain-distribution"><i style="width:${share}%"></i></span><span class="chain-meta"><span>${share?share.toFixed(1):'0'}% of detections</span><span class="${value.critical?'chain-critical':''}">${num(value.critical)} critical</span></span></button>`}).join('')}</div>
+ <div class="chain-caption" role="status">${selected!=null?'Filtering by '+esc(ST[selected].n)+'. Select the stage again or clear the filter to show all stages.':'Stage order is a reference for investigation; counts alone do not establish an attack sequence.'}</div></section>`
+}
 function tactics(){
  const d=S.d,rows=TACT.map(([n,st])=>{const k=d.tactics.find(x=>x.tactic===n)||{};return{n,st,c:k.critical||0,o:k.non_critical||0}});
  const show=r=>[S.crit==='non'?0:r.c,S.crit==='critical'?0:r.o],mx=Math.max(1,...rows.map(r=>show(r)[0]+show(r)[1]));
  return`<div class="bars">${rows.map(r=>{const[c,o]=show(r);const col=ST[r.st].c;
   return`<div class="bar" data-stage="${r.st}" data-tip="${esc(r.n)}: ${r.c} critical, ${r.o} other"><div class="stk"><i style="height:${c/mx*100}%;background:${col}"></i><i style="height:${o/mx*100}%;background:${col};opacity:.4"></i></div><span>${esc(r.n)}</span></div>`}).join('')}</div>`}
 function home(){
+ if(!S.d)return;
  const d=S.d,t=d.totals,sf=S.stage,q=S.q.toLowerCase(),sc=d.scan||{};
- const inc=(S.searchResults||d.incidents).filter(i=>(i.status||'active')===S.status&&(sf==null||i.stage_counts[sf]>0)&&(!q||(i.name+' '+(i.ips||[]).join(' ')).toLowerCase().includes(q)));
+ const inc=(S.searchResults||d.incidents).filter(i=>(i.status||'active')===S.status&&(sf==null||i.stage_counts[sf]>0)&&(S.searchResults!==null||!q||(String(i.id)+' '+i.name+' '+(i.ips||[]).join(' ')+' '+(i.users||[]).join(' ')).toLowerCase().includes(q)));
  const ast=d.assets.filter(a=>sf==null||a.stage_counts[sf]>0).slice(0,6);
  const chips=a=>a.map((n,k)=>n?`<span class="chip" style="border-color:${ST[k].c};color:${ST[k].c}" title="${esc(ST[k].n)}">${n}</span>`:'').join('');
  $('#view').innerHTML=`
  <div class="cards">${card('Incidents',t.incidents_critical,t.incidents,'Critical','#ff4d5e')}${card('Alerts',t.alerts_critical,t.alerts,'Critical','#ffb020')}${card('Assets',t.assets_risky,t.assets,'Risky','#a77bff')}${card('Users',t.users_risky,t.users,'Risky','#2ec4b6')}
- <div class="card"><h4>Last scan</h4><div class="big">${sc.mbps?sc.mbps.toFixed(1):'-'}<small> MB/s</small></div><div class="sub"><span>Peak memory ${sc.peak_gb??'-'} GB</span><span>${sc.seconds?Math.round(sc.seconds/60)+' min':'-'}</span></div></div></div>
+ <div class="card"><h4>Last scan</h4><div class="big">${sc.seconds?Math.floor(sc.seconds/60)+'m '+Math.round(sc.seconds%60)+'s':'?'}</div><div class="sub"><span>${sc.cold_run===false?'Resumed analysis':sc.mbps?sc.mbps.toFixed(1)+' MB/s':'No completed scan'}</span><span>${sc.peak_gb!=null?Number(sc.peak_gb).toFixed(2)+' GB peak':''}</span></div></div></div>
+ ${killChain(d,sf)}
  <div class="filters"><button data-status="active" class="${S.status==='active'?'on':''}">Active incidents</button><button data-status="suppressed" class="${S.status==='suppressed'?'on':''}">Suppressed · ${num(t.suppressed)}</button></div>
  <div class="grid">
-  <section class="panel"><div class="hd"><h3>Top incidents</h3><span>${inc.length} shown${d.limits?' · top 100':''}${sf!=null?' for '+esc(ST[sf].n):''}</span></div>
-  ${inc.map(i=>`<div class="cap${S.open.has(+i.id)?' open':''}"><div class="top" data-open="${i.id}" role="button" tabindex="0" aria-expanded="${S.open.has(+i.id)}"><div class="score" style="border-color:${scol(i.score)}">${i.score}</div><div class="nm"><b title="${esc(i.name)}">${esc(i.name)}</b><small>${num(i.alert_count)} matching events · ${num(i.detection_count||i.alert_count)} detections</small></div><span class="chev">&#9662;</span></div>
-  <div class="bd"><div>${chips(i.stage_counts)}</div><p>${esc(typeof i.first==='number'?new Date(i.first*1000).toLocaleString():i.first)} to ${esc(typeof i.last==='number'?new Date(i.last*1000).toLocaleString():i.last)}, ${i.hosts} hosts and IPs</p>${i.suppress_reason?'<p>Suppressed: '+esc(i.suppress_reason)+'</p>':''}<p>${esc(i.summary.slice(0,700))}${i.summary.length>700?'…':''}</p><button class="go" data-go="incident/${i.id}">Investigate path &#8599;</button></div></div>`).join('')||'<p class="r2">No incidents match. Run a scan or adjust the filters.</p>'}</section>
-  <section class="panel loopwrap"><div class="hd"><h3>XDR kill chain</h3><span><button id="pause" aria-pressed="false">Pause animation</button>${sf!=null?' <button data-stage="'+sf+'">Clear filter</button>':''}</span></div>${loop()}</section>
-  <section class="panel"><div class="hd"><h3>Top risky assets</h3><span>score 0 to 100</span></div>
-  ${ast.map(a=>`<div class="asset"><div class="score" style="border-color:${scol(a.score)}">${a.score}</div><div><span class="ip">${esc(a.ip)}</span> <span class="r2">${priv(a.ip)?'internal':'external'}</span><div>${chips(a.stage_counts)}</div><small>${esc(a.top.tech||'')} ${esc(a.top.desc||'')}</small></div></div>`).join('')||'<p class="r2">No assets for this filter.</p>'}</section>
+  <section class="panel incident-panel"><div class="hd"><h3>${S.status==='active'?'Active incidents':'Suppressed signals'}</h3><span>Top incidents ? ${inc.length} shown${sf!=null?' ? '+esc(ST[sf].n):''}</span></div>
+  ${inc.length?`<div class="table-scroll"><table class="incident-table"><thead><tr><th>RISK</th><th>INCIDENT / SOURCE</th><th>EVENTS</th><th>STAGES</th></tr></thead><tbody>${inc.map(i=>`<tr><td><span class="risk-tag" style="color:${scol(i.score)}">${i.score}</span></td><td><a class="incident-name" href="#incident/${i.id}">${esc(i.name)}</a><div class="r2 mono">${esc((i.ips||[]).slice(0,2).join(' ? '))}</div><div class="r2">${esc(typeof i.first==='number'?new Date(i.first*1000).toLocaleString():i.first)}${i.suppress_reason?' ? '+esc(i.suppress_reason):''}</div></td><td>${num(i.alert_count)}<div class="r2">${num(i.detection_count||i.alert_count)} detections</div></td><td>${chips(i.stage_counts)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty-state">No incidents to display. Run a scan or adjust the filters.</div>'}</section>
+  <aside class="side-panels">
+  <section class="panel"><div class="hd"><h3>Assets to review</h3><span>Risk score</span></div>
+  ${ast.map(a=>`<div class="asset"><div class="score" style="border-color:${scol(a.score)};color:${scol(a.score)}">${a.score}</div><div><span class="ip">${esc(a.ip)}</span> <span class="r2">${priv(a.ip)?'internal':'external'}</span><small>${esc(a.top.tech||'')} ${esc(a.top.desc||'')}</small></div></div>`).join('')||'<p class="r2">No assets for this filter.</p>'}</section></aside>
  </div>
  <section class="panel tact"><div class="hd"><h3>Alerts by tactic</h3><span class="leg">${[['all','All'],['critical','Critical'],['non','Other']].map(([k,l])=>`<button data-crit="${k}" class="${S.crit===k?'on':''}">${l}</button>`).join('')}</span></div>${tactics()}</section>`}
 
@@ -233,7 +255,18 @@ async function incident(id){
   <div><section class="panel"><div class="hd"><h3>Timeline</h3><span>${tl.length} steps</span></div>
   ${tl.map((e,i)=>`<div class="tl" data-i="${i}"><span class="dot" style="background:${ST[e.stage].c}">${i+1}</span><div><div><b class="mono">${esc(e.tech)}</b> ${esc(e.tname)} <em style="color:${ST[e.stage].c}">${esc(e.tactic)}</em></div><div class="r2">${esc(tm(e))}, ${esc(e.src)} to ${esc(e.dst)}. ${esc(e.desc)} (${esc(e.rule)})${e.out_of_order?' · Stage order differs from expected progression':''}</div><div class="r2 mono">${e.file?esc(e.file)+' @ byte '+esc(e.offset):''}</div></div><span class="sev" style="color:${scol(e.sev)}">${e.sev}</span></div>`).join('')}</section>
   <section class="panel" style="margin-top:12px"><div class="hd"><h3>Incident report</h3></div><p class="rep">${esc(p.report)}</p>
-  <h3 style="margin:12px 0 0">What the attacker could reach next</h3><ul class="nx">${(p.next_hops||[]).map(h=>`<li><span class="mono">${esc(h.from)}</span> to <span class="mono">${esc(h.to)}</span> <small>${esc(h.why)}</small></li>`).join('')||'<li><small>No further reachable assets found.</small></li>'}</ul></section></div></div>`}
+  <h3 style="margin:12px 0 0">What the attacker could reach next</h3><ul class="nx">${(p.next_hops||[]).map(h=>`<li><span class="mono">${esc(h.from)}</span> to <span class="mono">${esc(h.to)}</span> <small>${esc(h.why)}</small></li>`).join('')||'<li><small>No further reachable assets found.</small></li>'}</ul></section>
+  <section class="panel" style="margin-top:12px"><div class="hd"><h3>AI second opinion</h3><button id="ai-review">Review with Gemini</button></div><p class="rep">Optional suggestion, not measured accuracy. Sends at most 12 KB of pseudonymized detection metadata to Google, with no raw logs, commands or file paths. Free-tier content may be used to improve products.</p><div id="ai-result" class="rep" aria-live="polite">Uses the server's GEMINI_API_KEY. Existing detections and risk scores stay unchanged.</div></section></div></div>`}
+
+async function reviewIncident(){
+ const id=S.p?.id;if(!id)return;$('#ai-review').disabled=true;$('#ai-result').textContent='Reviewing a small evidence sample...';
+ try{const result=await api('/incidents/'+id+'/ai-review',{method:'POST'});if(S.p?.id!==id||!location.hash.startsWith('#incident'))return;
+  const review=result.review;
+  const citation=eid=>{const event=S.p.timeline.find(e=>e.alert_id===result.evidence[eid]);return esc(eid+(event?' — '+event.tech+'; '+event.file+' @ byte '+event.offset:''))};
+  $('#ai-result').innerHTML='<p><b>'+esc(review.assessment.replaceAll('_',' '))+'</b> · '+(result.cached?'Cached review':'New review')+' · '+num(result.metadata_bytes)+' bytes of metadata</p><p>'+esc(review.summary)+'</p><ul>'+review.findings.map(f=>'<li>'+esc(f.explanation)+'<div class="r2 mono">'+f.evidence_ids.map(citation).join('<br>')+'</div></li>').join('')+'</ul><p><b>Limitations</b></p><ul>'+review.limitations.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul>';
+ }catch(e){if(S.p?.id===id&&$('#ai-result'))$('#ai-result').textContent='AI review unavailable: '+e.message}
+ finally{if(S.p?.id===id&&$('#ai-review'))$('#ai-review').disabled=false}
+}
 function graph(p){
  const W=940,m=new Map(),tl=p.timeline,seen={};
  tl.forEach(e=>[e.src,e.dst,...(e.user?[e.user]:[])].forEach(ip=>{const n=m.get(ip);n?n.stage=Math.min(n.stage,e.stage):m.set(ip,{ip,stage:e.stage,ord:m.size,user:ip===e.user})}));
@@ -265,15 +298,17 @@ document.addEventListener('click',e=>{
  else if(x=t.closest('[data-status]')){S.status=x.dataset.status;S.searchResults=null;searchIncidents()}
  else if(t.id==='show-more'){S.expanded=true;incident(S.p.id)}
  else if(t.id==='access'){$('#auth-key').value='';$('#auth').showModal()}
+ else if(t.id==='ai-review')reviewIncident()
  else if(t.id==='auth-cancel')$('#auth').close();
+ else if(t.id==='dismiss-simulation'){dismissedSimulation=simulationNoticeKey();try{localStorage.setItem('kc-dismissed-simulation',dismissedSimulation)}catch{}renderNotices()}
  else if(t.id==='export'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(S.p,null,2)],{type:'application/json'}));a.href=url;a.download='incident-'+S.p.id+'.json';a.click();URL.revokeObjectURL(url)}
  else if(x=t.closest('[data-open]')){const id=+x.dataset.open;S.open.has(id)?S.open.delete(id):S.open.add(id);home()}
+ else if(t.id==='clear-stage'){S.stage=null;home()}
  else if(x=t.closest('[data-stage]')){const k=+x.dataset.stage;S.stage=S.stage===k?null:k;home()}
  else if(x=t.closest('[data-crit]')){S.crit=x.dataset.crit;home()}
  else if(x=t.closest('.tl')){const i=+x.dataset.i;focus(ev=>ev===S.p.timeline[i])}
  else if(x=t.closest('.nd')){const ip=x.dataset.ip;focus(ev=>ev.src===ip||ev.dst===ip||ev.user===ip)}
  else if(x=t.closest('.ed')){const i=+x.dataset.i;if(i>=0)focus(ev=>ev===S.p.timeline[i])}
- else if(t.id==='pause'){const l=$('.loop');l.classList.toggle('paused');const on=l.classList.contains('paused');t.setAttribute('aria-pressed',on);t.textContent=on?'Resume animation':'Pause animation'}
  else if(t.id==='scan')scan()});
 document.addEventListener('mousemove',e=>{
  const x=e.target.closest&&e.target.closest('[data-tip]'),tip=$('#tip');
@@ -281,16 +316,31 @@ document.addEventListener('mousemove',e=>{
  tip.textContent=x.dataset.tip;tip.style.display='block';
  tip.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';tip.style.top=(e.clientY+14)+'px'});
 let searchTimer,searchVersion=0;
-async function searchIncidents(){const version=++searchVersion;try{const result=S.q&&!S.demo?await api('/incidents?limit=100&status='+S.status+'&search='+encodeURIComponent(S.q)):null;if(version!==searchVersion)return;S.searchResults=result;if(!location.hash.startsWith('#incident'))home()}catch(e){$('#st').textContent='Search unavailable'}}
+async function searchIncidents(){const version=++searchVersion;try{const result=!S.demo?await api('/incidents?limit=100&status='+S.status+'&search='+encodeURIComponent(S.q.trim())):null;if(version!==searchVersion)return;S.searchResults=result;$('#st').textContent=S.q.trim()?(result?.length||0)+' matching incidents (up to 100; current status and stage filters apply)':'Ready';if(location.hash.startsWith('#incident'))location.hash='#home';else home()}catch(e){if(version===searchVersion)$('#st').textContent='Search failed'+(e.status?' ('+e.status+')':'')+': '+e.message}}
 $('#q').addEventListener('input',e=>{S.q=e.target.value;clearTimeout(searchTimer);searchTimer=setTimeout(searchIncidents,200)});
 addEventListener('hashchange',route);
+let scanPollTimer;
+function renderScanProgress(s){
+ const panel=$('#scan-progress'),bar=$('#scan-bar');
+ panel.hidden=!s.running&&!s.error&&s.percent!==100;
+ panel.classList.toggle('failed',Boolean(s.error));
+ const percent=Math.max(0,Math.min(100,Number(s.percent)||0));
+ const processing=s.running&&['aggregating','correlating'].includes(s.phase);
+ if(processing)bar.removeAttribute('value');else bar.value=percent;
+ $('#scan-phase').textContent=s.error?'Scan failed':s.result_reused?'Results are up to date':s.running?({extracting:'Reading and detecting log events',aggregating:'Aggregating detections',correlating:'Building attack paths'}[s.phase]||'Starting scan'):'Scan complete';
+ $('#scan-percent').textContent=processing?'Processing':Math.round(percent)+'%';
+ $('#scan-detail').textContent=s.error?s.error:s.result_reused?'Reused the completed analysis. The log file and analysis settings have not changed.':processing?'Log reading is complete. Analysis is still running.':s.running?`${(s.mbps||0).toFixed(1)} MB/s${s.eta!=null?' · Estimated time to finish reading: '+s.eta+' s':''}`:'Analysis is ready. View the results below.';
+}
 async function scan(){
- try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});poll()}
- catch(e){$('#st').textContent='Scan could not start ('+e.message+'). Check the path, access key, or running job.'}}
+ $('#scan').disabled=true;
+ try{await api('/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:$('#path').value})});renderScanProgress({running:true,percent:0});poll()}
+ catch(e){$('#scan').disabled=false;$('#st').textContent='Scan could not start'+(e.status?' ('+e.status+')':'')+': '+e.message+(e.status===400?' Use a path inside Docker, such as /data/firex-10G.log.':'')}}
 async function poll(){
+ clearTimeout(scanPollTimer);
  try{const s=await api('/scan/status');
-  $('#scan').disabled=s.running;$('#st').textContent=s.error?s.error:s.running?`scanning ${Math.round(s.percent||0)}%, ${(s.mbps||0).toFixed(1)} MB/s, ETA ${s.eta||'-'} s`:'Ready';
-  if(s.running)setTimeout(poll,2000);else load()}catch(e){}}
+  renderScanProgress(s);
+  $('#scan').disabled=s.running;$('#st').textContent=s.error?s.error:s.running?`${s.phase||'Scanning'} ${Math.round(s.percent||0)}%, ${(s.mbps||0).toFixed(1)} MB/s, ETA ${s.eta||'-'} s`:'Ready';
+  if(s.running)scanPollTimer=setTimeout(poll,2000);else load()}catch(e){$('#st').textContent='Scan status unavailable. Reconnecting…';scanPollTimer=setTimeout(poll,5000)}}
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role="button"]')){e.preventDefault();e.target.click()}});
 $('#auth-form').addEventListener('submit',e=>{e.preventDefault();const key=$('#auth-key').value;key?sessionStorage.setItem('kc-token',key):sessionStorage.removeItem('kc-token');$('#auth').close();load()});
 load();poll();

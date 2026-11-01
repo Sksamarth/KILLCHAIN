@@ -15,7 +15,7 @@ import requests
 
 def score(paths, truth, evidence=None):
     found=correct=parent_correct=total=rebuilt=0
-    matched_incidents=set(); breakdown=[]
+    matched_incidents=set(); breakdown=[]; incident_attacks={}
     for attack in truth['attacks']:
         ordered=[]; detail=[]
         for step in attack['steps']:
@@ -29,14 +29,30 @@ def score(paths, truth, evidence=None):
                 matched_incidents.add(p['id']); ordered.append((p['id'],i,e['tech']==step['technique']))
             detail.append(dict(step=step,found=bool(hit),correct=bool(hit and hit[2]['tech']==step['technique'])))
         ok=bool(ordered) and len(ordered)==len(attack['steps']) and len({x[0] for x in ordered})==1 and all(x[2] for x in ordered) and all(a[1]<b[1] for a,b in zip(ordered,ordered[1:]))
-        rebuilt+=ok; breakdown.append(dict(attack=attack['id'],rebuilt=ok,steps=detail))
+        for incident_id in {x[0] for x in ordered}:
+            incident_attacks.setdefault(incident_id,set()).add(attack['id'])
+        breakdown.append(dict(attack=attack['id'],rebuilt=ok,steps=detail))
+    # Sharing one incident between independent planted attacks is not a rebuilt path.
+    merged={incident_id for incident_id,attacks in incident_attacks.items() if len(attacks)>1}
+    affected=set().union(*(incident_attacks[i] for i in merged)) if merged else set()
+    for attack in breakdown:
+        attack['merged_with_other_attack']=attack['attack'] in affected
+        attack['rebuilt']=attack['rebuilt'] and not attack['merged_with_other_attack']
+    rebuilt=sum(attack['rebuilt'] for attack in breakdown)
     return dict(detection=found/total if total else None,labels=correct/found if found else None,parent_labels=parent_correct/found if found else None,
-                attack_paths=rebuilt/len(truth['attacks']) if truth['attacks'] else None,false_alarms=(len(paths)-len(matched_incidents))/len(paths) if paths else None,breakdown=breakdown)
+                attack_paths=rebuilt/len(truth['attacks']) if truth['attacks'] else None,false_alarms=(len(paths)-len(matched_incidents))/len(paths) if paths else None,merged_incidents=len(merged),breakdown=breakdown)
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--truth',default=os.environ.get('GROUND_TRUTH','/data/ground_truth/attacks.json'));parser.add_argument('--url',default=os.environ.get('API_URL','http://frontend/api'))
     args=parser.parse_args()
+    if not Path(args.truth).exists():
+        print(json.dumps(dict(accuracy_status='NOT MEASURED: no ground truth supplied',great_gate='UNVERIFIED'),indent=2))
+        return 2
+    truth=json.loads(Path(args.truth).read_text())
+    if not truth.get('attacks') or any(not a.get('steps') for a in truth['attacks']): raise ValueError('Ground truth must contain nonempty attacks and ordered steps')
+    ids=[a['id'] for a in truth['attacks']]
+    if len(set(ids))!=len(ids): raise ValueError('Ground-truth attack IDs must be unique')
     session=requests.Session()
     if os.environ.get('API_TOKEN'): session.headers['Authorization']='Bearer '+os.environ['API_TOKEN']
     def get(endpoint):
@@ -51,10 +67,6 @@ def main():
     for incident in incidents:
         start=time.perf_counter();paths.append(get(f'/incidents/{incident["id"]}/path'));latency.append((time.perf_counter()-start)*1000)
     result={'stats':get('/stats'),'p50_ms':statistics.median(latency) if latency else None,'p95_ms':sorted(latency)[max(0,int(len(latency)*.95+.999)-1)] if latency else None}
-    if not Path(args.truth).exists():
-        result.update(accuracy_status='NOT MEASURED: no ground truth supplied',great_gate='UNVERIFIED');print(json.dumps(result,indent=2));return 2
-    truth=json.loads(Path(args.truth).read_text())
-    if not truth.get('attacks') or any(not a.get('steps') for a in truth['attacks']): raise ValueError('Ground truth must contain nonempty attacks and ordered steps')
     from urllib.parse import urlencode
     evidence={}
     for attack in truth['attacks']:

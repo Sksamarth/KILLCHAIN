@@ -2,9 +2,12 @@ import hashlib
 import ipaddress
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import yaml
+
+from backend.formats import endpoint
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGES = ['Initial Attempts', 'Persistent Foothold', 'Exploration', 'Propagation', 'Exfiltration & Impact']
@@ -15,6 +18,7 @@ TIMESTAMP = re.compile(rb'(?:^| )eventtime=(\d{10})\d{9}(?:\s|$)')
 ALIASES = {'srcip': 'src_ip', 'dstip': 'dst_ip', 'dstport': 'dst_port', 'sentbyte': 'bytes'}
 
 
+@lru_cache(maxsize=65536)
 def private(value):
     try:
         ip = ipaddress.ip_address(value)
@@ -26,7 +30,9 @@ def private(value):
 def condition(value, expression):
     op = str(expression)
     if op in ('is_private', 'not_private'):
-        return private(value) if op == 'is_private' else bool(value) and not private(value)
+        try: ipaddress.ip_address(value)
+        except ValueError: return False
+        return private(value) if op == 'is_private' else not private(value)
     if op.startswith(('>', '<')):
         try:
             return float(value) > float(op[1:]) if op[0] == '>' else float(value) < float(op[1:])
@@ -55,15 +61,20 @@ class RuleEngine:
             if not re.fullmatch(r'T\d{4}(\.\d{3})?', r['technique']) or r['technique'] not in known:
                 raise ValueError(f"Unknown ATT&CK technique: {r['technique']}")
             if r['tactic'] not in self.config['tactics']: raise ValueError('Unknown tactic')
-            if r['type'] not in ('match', 'threshold', 'distinct_threshold'): raise ValueError('Unknown rule type')
+            if r['type'] not in ('match', 'threshold', 'distinct_threshold', 'periodic'): raise ValueError('Unknown rule type')
+            if r.get('source','fortigate') not in ('fortigate','endpoint'): raise ValueError('Unknown rule source')
             pattern = re.compile(r['match'].encode())
             fields = set(pattern.groupindex) | {'src_net24'}
+            if r.get('source') == 'endpoint': fields |= {'host','user','src_ip','dst_ip','dst_port','bytes','new_user','remote','status','protocol','account_scope'}
             if not set(r.get('where', {})) <= fields: raise ValueError('Condition references uncaptured field')
             for v in r.get('where', {}).values(): condition('', v)
             if r['type'] != 'match':
                 if r.get('window', 0) <= 0 or r.get('count', 0) < 2: raise ValueError('Invalid threshold')
                 if not set(r.get('group_by', [])) <= fields: raise ValueError('Invalid grouping field')
                 if r['type'] == 'distinct_threshold' and r.get('distinct') not in fields: raise ValueError('Invalid distinct field')
+                if r['type'] == 'periodic':
+                    if not 0 < r.get('min_interval',0) <= r.get('max_interval',0) <= r['window']: raise ValueError('Invalid periodic interval')
+                    if not 0 <= r.get('max_jitter',-1) <= 1: raise ValueError('Invalid periodic jitter')
             self.compiled.append((r, r.get('prefilter', '').encode(), pattern))
         seq = yaml.safe_load((self.path.parent / 'sequence.yaml').read_text())
         for s in seq['sequences']:
@@ -74,28 +85,41 @@ class RuleEngine:
             expression = r.get('where',{}).get('dst_port','')
             if str(expression).startswith(('eq:','in:')):
                 self.port_hints[r['id']] = [b'dstport='+p.encode()+b' ' for p in expression.split(':',1)[1].split(',')]
+        self.by_source = {False:[],True:[]}
+        for entry in self.compiled:
+            self.by_source[entry[0].get('source')=='endpoint'].append(entry)
 
-    def candidates(self, line, file, offset):
-        matches = [(r, p.search(line)) for r, literal, p in self.compiled if literal in line
+    def candidates(self, line, file, offset, parsed=None, native_ts=None):
+        stamp = TIMESTAMP.search(line) if parsed is None and native_ts is None else None
+        normalized = parsed if parsed is not None else (None if stamp or native_ts is not None else endpoint(line))
+        if not stamp and native_ts is None and normalized is None: return
+        is_endpoint = normalized is not None
+        if is_endpoint: line, ts = normalized
+        else: ts = native_ts if native_ts is not None else int(stamp[1])
+        matches = [(r, p.search(line)) for r, literal, p in self.by_source[is_endpoint] if literal in line
                    and (r['id'] not in self.port_hints or any(h in line for h in self.port_hints[r['id']]))]
         matches = [(r, m) for r, m in matches if m]
         if not matches: return
-        stamp = TIMESTAMP.search(line)
-        if not stamp: return
-        ts = int(stamp[1])
-        values = {k.decode(): (a or b).decode('utf-8', 'replace') for k, a, b in IDENTITY.findall(line)}
+        if is_endpoint:
+            values = {k.decode():json.loads(v) for k,v in re.findall(rb'(\w+)=("(?:\\.|[^"\\])*")',line.split(b' command=',1)[0])}
+        else:
+            values = {k.decode(): (a or b).decode('utf-8', 'replace') for k, a, b in IDENTITY.findall(line)}
         base = {ALIASES.get(k, k): v for k, v in values.items()}
         for r, m in matches:
             fields = dict(base)
             fields.update({k: v.decode('utf-8', 'replace') for k, v in m.groupdict().items() if v is not None})
             src = fields.get('src_ip', '')
-            try: fields['src_net24'] = str(ipaddress.ip_network(src + '/24', strict=False))
-            except ValueError: fields['src_net24'] = ''
+            if 'src_net24' in r.get('group_by',[]) or 'src_net24' in r.get('where',{}):
+                try: fields['src_net24'] = str(ipaddress.ip_network(src + '/24', strict=False))
+                except ValueError: fields['src_net24'] = ''
             if not all(condition(fields.get(k, ''), v) for k, v in r.get('where', {}).items()): continue
             stage = self.config['tactics'][r['tactic']]['kill_chain']
             if r['tactic'] == 'Credential Access' and private(src): stage = 'Propagation'
+            try: size = int(fields.get('bytes',0))
+            except (ValueError,TypeError): continue
+            if not 0 <= size <= 9223372036854775807: continue
             alert = {k: fields.get(k, '') for k in ('host', 'user', 'src_ip', 'dst_ip', 'dst_port', 'new_user')}
-            alert.update(ts=ts, first_ts=ts, last_ts=ts, bytes=int(fields.get('bytes', 0)), count=1,
+            alert.update(ts=ts, first_ts=ts, last_ts=ts, bytes=size, count=1,
                          rule_id=r['id'], rule_name=r['name'], technique=r['technique'], technique_name=r['technique_name'],
                          tactic=r['tactic'], kill_chain=stage, stage_order=STAGES.index(stage), weight=r['weight'],
                          file=file, offset=offset, group_key=json.dumps([fields.get(k, '') for k in r.get('group_by', [])]),

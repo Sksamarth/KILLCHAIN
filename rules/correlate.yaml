@@ -1,4 +1,8 @@
 max_gap_seconds: 3600
+# Prevent a continuously busy entity from chaining the entire dataset together.
+max_incident_span_seconds: 14400
+# Joint host/account context remains usable when either entity is a global hub.
+compound_entities: true
 min_alerts: 2
 min_weight_override: 8
 entity_degree_cap: 200

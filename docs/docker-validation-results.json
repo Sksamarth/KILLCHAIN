@@ -1,0 +1,55 @@
+{
+  "date_local": "2026-11-01",
+  "timezone": "Asia/Calcutta",
+  "docker_desktop": "4.97.0",
+  "docker_engine": "29.9.2",
+  "compose_startup_verified": true,
+  "final_backend_status": "healthy",
+  "final_api_health": {
+    "status": "ok",
+    "service": "killchain-xdr",
+    "database": "ready"
+  },
+  "frontend_url": "http://localhost:8080",
+  "tests": {
+    "passed": 24,
+    "warnings": 1,
+    "seconds": 6.21
+  },
+  "duckdb_memory_limit": "1GB",
+  "real_data_test": {
+    "status": "FAILED_TO_COMPLETE",
+    "input_bytes": 6543120032,
+    "extracted_lines": 12398551,
+    "completed_extraction_chunks": 98,
+    "unsupported_lines": 0,
+    "oversized_lines": 0,
+    "first_attempt_interrupted_stage": "correlating",
+    "first_attempt_engine_failure": "Docker API returned HTTP 500",
+    "resume_reused_saved_chunks": true,
+    "resumed_attempt_interrupted_stage": "correlating",
+    "resumed_attempt_engine_failure": "Docker API stopped responding",
+    "root_cause_confirmed": false,
+    "oom_status_for_failed_attempts": "unconfirmed",
+    "complete_processing_seconds": null,
+    "final_cgroup_peak_bytes": null,
+    "real_data_docker_path_p95_ms": null
+  },
+  "recovery": {
+    "offline_backup_manifest": "tmp/docker-backup/manifest.json",
+    "backup_bytes": 7654604800,
+    "installer_source": "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe",
+    "installer_bytes": 620496816,
+    "installer_authenticode_status": "Valid",
+    "installer_signer": "Docker Inc",
+    "installer_exit_code": 0,
+    "existing_data_root": "E:\\DockerData",
+    "factory_reset_performed": false,
+    "volumes_deleted": false,
+    "raw_logs_modified": false
+  },
+  "accuracy_status": "NOT MEASURED: independent planted-attack labels unavailable",
+  "fifty_gb_gate": "UNVERIFIED",
+  "historical": true,
+  "superseded_by": "docker-performance-results.json"
+}

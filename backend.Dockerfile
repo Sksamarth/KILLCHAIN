@@ -8,5 +8,6 @@ COPY rules rules
 COPY tests tests
 COPY pytest.ini .
 COPY docs docs
+ENV PYTHONPATH=/app PYTEST_ADDOPTS="-o cache_dir=/tmp/killchain-pytest-cache"
 USER analyst
 CMD ["uvicorn", "backend.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

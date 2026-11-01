@@ -1,0 +1,24 @@
+{
+  "input_bytes": 6543120032,
+  "input_lines": 12398551,
+  "resumed_processing_seconds": 277.3232480000006,
+  "checkpoint_reused_chunks": 98,
+  "cold_run": false,
+  "sampled_peak_rss_gb": 2.10530304,
+  "cgroup_peak_bytes": null,
+  "totals": {
+    "incidents": 184,
+    "incidents_critical": 5,
+    "alerts": 589183,
+    "alerts_critical": 0,
+    "assets": 585185,
+    "assets_risky": 0,
+    "users": 356,
+    "users_risky": 0,
+    "suppressed": 588430
+  },
+  "unsupported_lines": 0,
+  "oversized_lines": 0,
+  "initial_extraction_mbps": 18.99461738473611,
+  "measurement_scope": "native Windows; final processing reused 98 completed extraction chunks; no cold end-to-end or Docker performance claim"
+}

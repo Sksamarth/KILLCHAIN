@@ -18,6 +18,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from backend.rules import ROOT, RuleEngine, TIMESTAMP
+from backend.formats import endpoint
 from backend.store import connect
 
 SCHEMA = pa.schema([(k, pa.int64() if k in {'ts','first_ts','last_ts','bytes','count','stage_order','weight','offset','window','threshold'} else pa.string()) for k in (
@@ -28,7 +29,7 @@ MAX_LINE = 1024 * 1024
 
 def ranges(path, size=64*1024*1024):
     for f in sorted([path] if path.is_file() else (p for p in path.rglob('*') if p.is_file())):
-        if f.suffix.lower() not in {'.log','.txt','.syslog',''}: continue
+        if f.suffix.lower() not in {'.log','.txt','.syslog','.jsonl','.ndjson','.xml',''}: continue
         stat = f.stat()
         for start in range(0, stat.st_size, size):
             yield (str(f.resolve()), start, min(start+size, stat.st_size), stat.st_size, stat.st_mtime_ns)
@@ -38,6 +39,7 @@ def scan_range(task):
     file, start, end, expected_size, expected_mtime, out, rules = task
     engine = RuleEngine(Path(rules))
     rows, lines, rejected, unsupported = [], 0, 0, 0
+    synthetic_lines=reported_lines=unmapped_reports=0
     writer = pq.ParquetWriter(out, SCHEMA, compression='zstd')
     try:
         with open(file, 'rb') as stream:
@@ -57,26 +59,36 @@ def scan_range(task):
                     rejected += 1
                     while line and not line.endswith(b'\n'): line = stream.readline(MAX_LINE+1)
                     continue
-                if not TIMESTAMP.search(line): unsupported+=1;continue
-                rows.extend(engine.candidates(line, file, offset))
+                stamp = TIMESTAMP.search(line)
+                parsed = None if stamp else endpoint(line)
+                if not stamp and parsed is None: unsupported+=1;continue
+                candidates=list(engine.candidates(line,file,offset,parsed,int(stamp[1]) if stamp else None))
+                if parsed:
+                    synthetic_lines+=int(b'source_synthetic="true"' in parsed[0])
+                    if parsed[0].startswith(b'event="reported_alert"'):
+                        reported_lines+=1
+                        unmapped_reports+=int(not candidates)
+                rows.extend(candidates)
                 if len(rows) >= 8192:
                     writer.write_table(pa.Table.from_pylist(rows, schema=SCHEMA)); rows.clear()
             if rows: writer.write_table(pa.Table.from_pylist(rows, schema=SCHEMA))
             snapshot=os.fstat(stream.fileno())
             if (snapshot.st_size,snapshot.st_mtime_ns)!=(expected_size,expected_mtime): raise ValueError('Log changed during scan; retry against a stable snapshot')
     finally: writer.close()
-    result={'parquet': out, 'lines': lines, 'oversized_lines': rejected, 'unsupported_lines':unsupported,'bytes': end-start}
+    result={'parquet':out,'lines':lines,'oversized_lines':rejected,'unsupported_lines':unsupported,'bytes':end-start,
+            'synthetic_lines':synthetic_lines,'reported_alert_lines':reported_lines,'unmapped_report_lines':unmapped_reports}
     Path(out+'.json').write_text(json.dumps(result))
     return result
 
 
-def materialize(db, files):
+def materialize(db, files, engine=None):
     # Read projected columns directly from Parquet instead of materializing every
     # wide background candidate. Quote SQL literals, including apostrophes in paths.
     paths=','.join("'"+str(p).replace("'","''")+"'" for p in files)
     db.execute(f'CREATE OR REPLACE TEMP VIEW candidates AS SELECT * FROM read_parquet([{paths}])')
     db.execute('CREATE OR REPLACE TABLE alerts AS SELECT * FROM candidates WHERE kind=\'match\'')
     rules = db.execute("SELECT DISTINCT rule_id,kind,\"window\",threshold FROM candidates WHERE kind!='match'").fetchall()
+    specifications = {r['id']:r for r in (engine or RuleEngine()).rules}
     for rule_id, kind, window, threshold in rules:
         # RANGE windows use event-time, including candidates from every file and chunk.
         count = 'count(DISTINCT distinct_value)' if kind == 'distinct_threshold' else 'count(*)'
@@ -85,6 +97,23 @@ def materialize(db, files):
             FROM candidates WHERE rule_id=? AND group_key IN
                 (SELECT group_key FROM candidates WHERE rule_id=? GROUP BY group_key HAVING {count} >= {int(threshold)})
             WINDOW w AS (PARTITION BY group_key ORDER BY ts RANGE BETWEEN {int(window)} PRECEDING AND CURRENT ROW)''', [rule_id,rule_id])
+        if kind == 'periodic':
+            spec = specifications[rule_id]
+            # One timestamp per group prevents duplicate observations from creating
+            # zero-interval beacons. The rolling list is bounded by the time window
+            # and only generated for small outbound candidates that passed filters.
+            db.execute(f'''CREATE OR REPLACE TEMP TABLE cadence AS
+                WITH times AS (
+                  SELECT group_key,ts,list(ts) OVER (PARTITION BY group_key ORDER BY ts
+                    RANGE BETWEEN {int(window)} PRECEDING AND CURRENT ROW) AS stamps
+                  FROM (SELECT DISTINCT group_key,ts FROM hits)
+                ), intervals AS (
+                  SELECT *,list_transform(range(2,len(stamps)+1), lambda i: stamps[i]-stamps[i-1]) AS gaps FROM times
+                ) SELECT group_key,ts FROM intervals WHERE len(stamps)>={int(threshold)}
+                  AND list_min(gaps)>={float(spec['min_interval'])}
+                  AND list_max(gaps)<={float(spec['max_interval'])}
+                  AND coalesce(list_stddev_pop(gaps)/nullif(list_avg(gaps),0),1)<={float(spec['max_jitter'])}''')
+            db.execute('DELETE FROM hits WHERE NOT EXISTS (SELECT 1 FROM cadence c WHERE c.group_key=hits.group_key AND c.ts=hits.ts)')
         # Deterministic episodes: emit one aggregate per connected interval of threshold hits.
         db.execute('''CREATE OR REPLACE TEMP TABLE episodes AS
             WITH qualifying AS (SELECT *, lag(ts) OVER (PARTITION BY group_key ORDER BY ts,"offset",file) AS prev
@@ -118,10 +147,13 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
     engine = RuleEngine()
     chunks = list(ranges(path, chunk_size))
     if not chunks: raise ValueError('No supported, nonempty text log files found')
-    signature = hashlib.sha256(json.dumps(['scanner-v3',chunks,engine.fingerprint]).encode()).hexdigest()[:24]
+    signature = hashlib.sha256(json.dumps(['scanner-v4-endpoint-cadence',chunks,engine.fingerprint]).encode()).hexdigest()[:24]
+    publication_digest = hashlib.sha256(b'publication-v2'+b''.join((ROOT/name).read_bytes() for name in (
+        'rules/sequence.yaml','rules/correlate.yaml','rules/report.yaml','backend/correlate.py','backend/graph.py'))).hexdigest()
     with connect(db_path) as db:
         dbfile = Path(db.execute('PRAGMA database_list').fetchone()[2])
         done = dict(db.execute('SELECT chunk_id,parquet FROM chunks WHERE run_id=?',[signature]).fetchall())
+        published = db.execute("SELECT value FROM cache WHERE key='stats'").fetchone()
     outdir = dbfile.parent / 'partials' / signature
     outdir.mkdir(parents=True, exist_ok=True)
     total, processed, peak, outputs = sum(x[2]-x[1] for x in chunks), 0, 0, []
@@ -132,7 +164,14 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
         if cid in done and Path(done[cid]).exists():
             outputs.append(output); processed += c[2]-c[1]
         else: tasks.append((cid, (*c, output, str(engine.path))))
+    previous=json.loads(published[0]) if published else {}
+    if not tasks and previous.get('run_id')==signature and previous.get('publication_digest')==publication_digest:
+        result={**previous,'running':False,'percent':100,'phase':'complete','result_reused':True,
+                'cold_run':False,'mbps':None,'seconds':time.monotonic()-started}
+        if progress: progress(result)
+        return result
     configured = os.environ.get('WORKERS','auto')
+    cached_bytes=processed
     workers = workers or (int(configured) if configured != 'auto' else min(os.cpu_count() or 1,4))
     if not 1 <= workers <= 16: raise ValueError('Worker count must be between 1 and 16')
     context = multiprocessing.get_context('spawn')
@@ -152,27 +191,36 @@ def _run(path, db_path=None, workers=None, progress=None, chunk_size=64*1024*102
                 with connect(db_path) as db:
                     db.execute('INSERT OR REPLACE INTO chunks VALUES (?,?,?)',[signature,cid,result['parquet']])
             seconds = time.monotonic()-started
-            state = dict(running=True,percent=processed/total*100,mbps=processed/1e6/max(seconds,.001),eta=round((total-processed)/(processed/max(seconds,.001))) if processed else None,peak_gb=peak/1e9)
+            read_bytes=processed-cached_bytes
+            state = dict(running=True,percent=processed/total*100,phase='extracting',mbps=read_bytes/1e6/max(seconds,.001),eta=round((total-processed)/(read_bytes/max(seconds,.001))) if read_bytes else None,peak_gb=peak/1e9)
             if progress: progress(state)
     # Only publish a completed generation. Readers see the previous complete result during extraction.
     from backend.correlate import build
+    extraction_seconds=time.monotonic()-started
     source_stats=[json.loads(Path(p+'.json').read_text()) for p in outputs]
-    if progress:progress(dict(running=True,percent=100,phase='aggregating',mbps=total/1e6/max(time.monotonic()-started,.001),eta=None,peak_gb=memory[0]/1e9 if memory else peak/1e9))
+    if progress:progress(dict(running=True,percent=100,phase='aggregating',mbps=(total-cached_bytes)/1e6/max(time.monotonic()-started,.001),eta=None,peak_gb=memory[0]/1e9 if memory else peak/1e9))
     with connect(db_path) as db:
         db.execute('BEGIN TRANSACTION')
         try:
-            materialize(db, outputs)
+            materialize(db, outputs, engine)
+            aggregation_seconds=time.monotonic()-started-extraction_seconds
             stats = dict(running=False,percent=100,mbps=total/1e6/max(time.monotonic()-started,.001),seconds=time.monotonic()-started,peak_gb=peak/1e9,bytes=total,files=len({c[0] for c in chunks}),run_id=signature)
             stats.update({k:sum(s[k] for s in source_stats) for k in ('lines','unsupported_lines','oversized_lines')})
+            stats.update({k:sum(s.get(k,0) for s in source_stats) for k in ('synthetic_lines','reported_alert_lines','unmapped_report_lines')})
             stats['synthetic_benchmark'] = os.environ.get('KC_SYNTHETIC_BENCHMARK')=='1'
             stats['checkpoint_reused_chunks']=len(chunks)-len(tasks)
             stats['cold_run']=len(chunks)==len(tasks)
+            stats.update(publication_digest=publication_digest,extraction_seconds=extraction_seconds,aggregation_seconds=aggregation_seconds,result_reused=False)
             if progress:progress(dict(running=True,percent=100,phase='correlating',eta=None))
             build(db, stats)
+            stats['correlation_seconds']=time.monotonic()-started-extraction_seconds-aggregation_seconds
             stats['peak_gb'] = max(peak,memory[0] if memory else peak)/1e9
             stats['peak_scope'] = 'sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement'
             stats['seconds'] = time.monotonic()-started
             stats['mbps'] = total/1e6/stats['seconds']
+            if not stats['cold_run']:
+                stats['resumed_bytes_per_second']=total/stats['seconds']
+                stats['mbps']=None
             try: stats['cgroup_peak_bytes'] = int(Path('/sys/fs/cgroup/memory.peak').read_text())
             except OSError: stats['cgroup_peak_bytes'] = None
             db.execute('INSERT OR REPLACE INTO cache VALUES (?,?)',['stats',json.dumps(stats)])

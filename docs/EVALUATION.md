@@ -1,5 +1,9 @@
 # Accuracy evaluation
 
+Ground truth must be independent of the detector and provider annotations. Copying reported ATT&CK tags into truth is circular validation. Missing truth now exits before API traversal; attack IDs must be unique.
+
+An incident containing matched steps from multiple independent planted attacks fails reconstruction for each affected attack. `merged_incidents` reports this failure separately. Each truth attack should describe one expected incident. Extra unrelated steps in a matched incident still require review; this evaluator does not certify exact path membership.
+
 The evaluator calls the API through nginx, paginates every active incident, loads precomputed paths and measures HTTP p50/p95 latency. It reports exact and parent-technique label accuracy separately. Missing truth is unverified, never 100% or PASS.
 
 Expected ground truth:

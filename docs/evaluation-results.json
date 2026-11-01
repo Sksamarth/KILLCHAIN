@@ -1,0 +1,27 @@
+{
+  "stats": {
+    "running": false,
+    "percent": 100,
+    "mbps": null,
+    "seconds": 277.3232480000006,
+    "peak_gb": 2.10530304,
+    "bytes": 6543120032,
+    "files": 1,
+    "run_id": "b277de922ea8d25de4f53a9a",
+    "lines": 12398551,
+    "unsupported_lines": 0,
+    "oversized_lines": 0,
+    "synthetic_benchmark": false,
+    "checkpoint_reused_chunks": 98,
+    "cold_run": false,
+    "peak_scope": "sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement",
+    "cgroup_peak_bytes": null,
+    "resumed_mbps": 23.59383888364089
+  },
+  "p50_ms": 84.57159999670694,
+  "p95_ms": 116.97480000293581,
+  "accuracy_status": "NOT MEASURED: no ground truth supplied",
+  "great_gate": "UNVERIFIED",
+  "incident_count": 184,
+  "measurement_scope": "all 184 active incidents from full supplied 6.54GB input; native Windows HTTP through temporary Python reverse proxy, not nginx/Docker"
+}

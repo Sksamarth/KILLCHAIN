@@ -59,7 +59,7 @@ def test_distinct_threshold_and_expiry(tmp_path):
     out=str(tmp_path/'out.parquet');scan_range((*next(ranges(f)),out,str(ROOT/'rules/detect.yaml')))
     with connect(tmp_path/'test.duckdb') as db:
         materialize(db,[out]); rows=records(db.execute('SELECT * FROM alerts'))
-    assert len(rows)==1 and rows[0]['rule_id']=='R002' and rows[0]['count']==10
+    assert len(rows)==1 and rows[0]['rule_id']=='R004' and rows[0]['count']==10
     f.write_bytes(b''.join(login(n*400,user=f'u{n}',src=f'45.74.28.{n+1}') for n in range(10)))
     scan_range((*next(ranges(f)),out,str(ROOT/'rules/detect.yaml')))
     with connect(tmp_path/'test2.duckdb') as db:
@@ -114,6 +114,22 @@ def test_api_paths_and_pagination(tmp_path,monkeypatch):
         assert client.get('/overview',headers={'Authorization':'Bearer test-secret'}).status_code==200
 
 
+def test_windows_log_mount_mapping(tmp_path,monkeypatch):
+    from backend.api import allowed_path
+    from fastapi import HTTPException
+    monkeypatch.setenv('LOG_PATH',str(tmp_path))
+    monkeypatch.setenv('HOST_LOG_PATH','E:/KillChain/data')
+    log=tmp_path/'firex-10G.log';log.write_text('example')
+    assert allowed_path(r'E:\KillChain\data\firex-10G.log')==log
+    assert allowed_path('  "e:/killchain/DATA/firex-10G.log"  ')==log
+    assert allowed_path(str(log))==log
+    for value in [r'E:\KillChain\other\firex-10G.log',r'E:\KillChain\data\..\secret.log',r'E:\KillChain\database\firex-10G.log']:
+        with pytest.raises(HTTPException) as error: allowed_path(value)
+        assert error.value.status_code==400
+    with pytest.raises(HTTPException) as error: allowed_path(r'E:\KillChain\data\missing.log')
+    assert error.value.detail=='Log path does not exist'
+
+
 def test_build_and_evidence_api(tmp_path,monkeypatch):
     from backend.correlate import build
     import backend.store as store
@@ -144,6 +160,8 @@ def test_checkpointed_run_and_failed_publication(tmp_path):
     with connect(dbpath) as db: previous=db.execute("SELECT value FROM cache WHERE key='overview'").fetchone()[0]
     second=run(f,db_path=dbpath,workers=1,chunk_size=500)
     assert first['run_id']==second['run_id']
+    assert first['cold_run'] is True and second['cold_run'] is False and second['mbps'] is None
+    assert second['result_reused'] is True
     with connect(dbpath) as db:
         assert db.execute('SELECT count(*) FROM chunks').fetchone()[0]==1
         assert db.execute('SELECT count(*) FROM alerts').fetchone()[0]==1
@@ -159,3 +177,49 @@ def test_no_candidates_is_successful(tmp_path):
         materialize(db,[out]);build(db,{})
         value=json.loads(db.execute("SELECT value FROM cache WHERE key='overview'").fetchone()[0])
         assert value['totals']['incidents']==0
+
+
+def test_suppressed_path_is_built_on_request_with_original_evidence(tmp_path,monkeypatch):
+    import backend.store as store
+    from backend.api import app
+    from fastapi.testclient import TestClient
+    from backend.scanner import run
+    dbpath=tmp_path/'lazy.duckdb';monkeypatch.setattr(store,'DB_PATH',str(dbpath))
+    file=tmp_path/'single.log';file.write_bytes(login(0,True))
+    run(file,db_path=dbpath,workers=1)
+    with connect(dbpath) as db:
+        stored=json.loads(db.execute('SELECT path_json FROM incident_paths').fetchone()[0])
+        assert stored['lazy_path'] is True and 'timeline' not in stored
+    with TestClient(app) as client:
+        listed=client.get('/incidents?status=suppressed').json()[0]
+        path=client.get(f"/incidents/{listed['id']}/path").json()
+        assert path['status']=='suppressed' and path['score']==stored['score']
+        assert len(path['timeline'])==1 and path['timeline'][0]['offset']==0
+        assert path['timeline'][0]['file']==str(file.resolve())
+        assert path['report']==stored['summary'] and path['nodes'] and path['edges']
+        assert client.get(f"/incidents/{listed['id']}/report").json()['report']==path['report']
+
+
+def test_health_remains_responsive_during_database_publication(tmp_path,monkeypatch):
+    import threading
+    import backend.store as store
+    from backend.api import app
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(store,'DB_PATH',str(tmp_path/'health.duckdb'))
+    acquired=threading.Event();release=threading.Event()
+    def publication():
+        with store.LOCK:
+            acquired.set()
+            release.wait(5)
+    with TestClient(app) as client:
+        writer=threading.Thread(target=publication)
+        writer.start()
+        assert acquired.wait(2)
+        try:
+            response=client.get('/health')
+            assert response.status_code==200
+            assert response.json().get('database')=='busy'
+            assert not release.is_set()
+        finally:
+            release.set();writer.join()
+        assert client.get('/health').json()['database']=='ready'

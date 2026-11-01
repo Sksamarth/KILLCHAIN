@@ -8,9 +8,13 @@ services:
     cpus: ${BACKEND_CPUS:-4}
     environment:
       LOG_PATH: /data
+      HOST_LOG_PATH: ${HOST_LOG_PATH:-}
       DB_PATH: /db/kc.duckdb
       WORKERS: ${WORKERS:-4}
+      DUCKDB_MEMORY_LIMIT: ${DUCKDB_MEMORY_LIMIT:-1GB}
       API_TOKEN: ${API_TOKEN:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
     volumes:
       - ${DATA_DIR:-./data}:/data:ro
       - kc_db:/db

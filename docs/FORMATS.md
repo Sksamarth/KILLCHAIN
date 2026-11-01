@@ -1,5 +1,7 @@
 # Observed log formats
 
+This inventory describes the supplied FortiGate dataset. See [DETECTIONS.md](DETECTIONS.md) for additional implemented endpoint schemas and examples.
+
 Input: `data/firex-10G.log`, 6,543,120,032 bytes. The filename is not a size measurement.
 This inventory examines the first 200,000 lines; it is not a claim that no other formats occur later.
 No ground-truth file or earlier tagger.py was found in the supplied locations.

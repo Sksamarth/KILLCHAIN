@@ -1,0 +1,67 @@
+﻿{
+    "scope":  "Resumed generated EDR input; grouping mechanics only, independent attack accuracy unverified",
+    "stats":  {
+                  "running":  false,
+                  "percent":  100,
+                  "mbps":  null,
+                  "seconds":  24.55205694399956,
+                  "peak_gb":  1.333133312,
+                  "bytes":  1000000314,
+                  "files":  1,
+                  "run_id":  "c03ba637e542c98018f3feee",
+                  "lines":  1591447,
+                  "unsupported_lines":  0,
+                  "oversized_lines":  0,
+                  "synthetic_lines":  317529,
+                  "reported_alert_lines":  317529,
+                  "unmapped_report_lines":  0,
+                  "synthetic_benchmark":  false,
+                  "checkpoint_reused_chunks":  15,
+                  "cold_run":  false,
+                  "publication_digest":  "7a1f0832fb8253853d611160441a82bea387daea95ffad08c912e83f0ab1f5fe",
+                  "extraction_seconds":  0.6284117579998565,
+                  "aggregation_seconds":  1.1343090369991842,
+                  "result_reused":  false,
+                  "correlation_seconds":  22.78842981300113,
+                  "peak_scope":  "sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement",
+                  "resumed_bytes_per_second":  40729797.763213344,
+                  "cgroup_peak_bytes":  1411735552
+              },
+    "totals":  {
+                   "incidents":  224,
+                   "incidents_critical":  224,
+                   "alerts":  317529,
+                   "alerts_critical":  62970,
+                   "assets":  3,
+                   "assets_risky":  0,
+                   "users":  8,
+                   "users_risky":  8,
+                   "suppressed":  0
+               },
+    "path_checks":  [
+                        {
+                            "id":  "100784864177159",
+                            "timeline":  1369,
+                            "nodes":  5,
+                            "edges":  2738,
+                            "latency_ms":  431.58860000000004,
+                            "ordered":  true
+                        },
+                        {
+                            "id":  "100875087415972",
+                            "timeline":  1460,
+                            "nodes":  5,
+                            "edges":  2920,
+                            "latency_ms":  333.52840000000003,
+                            "ordered":  true
+                        },
+                        {
+                            "id":  "102176915770950",
+                            "timeline":  1420,
+                            "nodes":  5,
+                            "edges":  2840,
+                            "latency_ms":  312.7796,
+                            "ordered":  true
+                        }
+                    ]
+}

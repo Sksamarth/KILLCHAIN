@@ -15,6 +15,11 @@ def criticality(ip, config):
     return 1
 
 
+def event_sentence(a, templates):
+    template = templates.get(a['tactic'], templates['default'])
+    return template.format_map(defaultdict(lambda: 'unknown', {k:v if v!='' else 'unknown' for k,v in a.items()}))
+
+
 def path_for(alerts, access, templates):
     graph = nx.MultiDiGraph()
     timeline, sentences, previous = [], [], -1
@@ -31,8 +36,7 @@ def path_for(alerts, access, templates):
                              desc=a['rule_name'], user=a['user'], count=a['count'], file=a['file'], offset=a['offset'],
                              alert_id=a['alert_id'], out_of_order=a['stage_order'] < previous))
         previous = a['stage_order']
-        template = templates.get(a['tactic'], templates['default'])
-        sentences.append(template.format_map(defaultdict(lambda: 'unknown', {k: v if v != '' else 'unknown' for k,v in a.items()})))
+        sentences.append(event_sentence(a,templates))
     compromised = {a['src_ip'] for a in alerts if private(a['src_ip'])} | {a['dst_ip'] for a in alerts if private(a['dst_ip'])}
     users = {a['user'] for a in alerts if a['user']}
     observed = {(x['src'],x['dst']) for x in timeline}

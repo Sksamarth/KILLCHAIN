@@ -1,4 +1,14 @@
 sequences:
+  - id: endpoint_brute_force_then_login
+    steps: [R101, R110]
+    same: [user, src_ip]
+    within: 3600
+    bonus_score: 20
+  - id: endpoint_login_then_exfiltration
+    steps: [R110, R160]
+    same: [host]
+    within: 86400
+    bonus_score: 15
   - id: brute_force_then_login
     steps: [R001, R010]
     same: [user, src_ip]

@@ -1,0 +1,53 @@
+{
+  "scope": "Full supplied dataset completed in Docker; cold/resumed provenance retained in stats; all active paths measured through nginx on the Compose network",
+  "workers": 2,
+  "stats": {
+    "running": false,
+    "percent": 100,
+    "mbps": null,
+    "seconds": 196.1205254280003,
+    "peak_gb": 2.014605312,
+    "bytes": 6543120032,
+    "files": 1,
+    "run_id": "e1d2e1a7a05ef77800bf61a6",
+    "lines": 12398551,
+    "unsupported_lines": 0,
+    "oversized_lines": 0,
+    "synthetic_benchmark": false,
+    "checkpoint_reused_chunks": 98,
+    "cold_run": false,
+    "publication_digest": "9ca51949735457a8622591d73af9bfbe7b2157ad80ce9524d65f425ffa0a83ad",
+    "extraction_seconds": 0.6411395730001459,
+    "aggregation_seconds": 98.59823589999996,
+    "result_reused": false,
+    "correlation_seconds": 96.8803526720003,
+    "peak_scope": "sampled parent and child RSS across extraction, aggregation and correlation; not a Docker measurement",
+    "resumed_bytes_per_second": 33362749.85864296,
+    "cgroup_peak_bytes": 2826027008
+  },
+  "totals": {
+    "incidents": 297,
+    "incidents_critical": 5,
+    "alerts": 589554,
+    "alerts_critical": 0,
+    "assets": 585268,
+    "assets_risky": 0,
+    "users": 448,
+    "users_risky": 0,
+    "suppressed": 588539
+  },
+  "native_count_consistency": false,
+  "validated_active_paths": 297,
+  "path_p50_ms": 35.82705700046063,
+  "path_p95_ms": 59.841293999852496,
+  "report_alert_and_raw_evidence_checks": "passed",
+  "accuracy_status": "NOT MEASURED: no independent planted-attack labels",
+  "fifty_gb_gate": "UNVERIFIED: input is 6.54 GB",
+  "completed_result_reuse": {
+    "result_reused": true,
+    "request_to_completion_seconds": 2.6321024000062607,
+    "backend_lookup_seconds": 0.37235980599962204,
+    "suppressed_paths_validated": 3
+  },
+  "native_count_consistency_note": "Historical native baseline used older rules. Expanded detection coverage changes full-data counts; optimization invariance was verified separately on identical saved alerts in performance-results.json."
+}

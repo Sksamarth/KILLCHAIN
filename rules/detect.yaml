@@ -19,8 +19,65 @@ tactics:
   Collection:           {order: 10, kill_chain: Exploration}
   Command and Control:  {order: 11, kill_chain: Persistent Foothold}
   Exfiltration:         {order: 12, kill_chain: Exfiltration & Impact}
+  Impact:               {order: 13, kill_chain: Exfiltration & Impact}
 
 rules:
+  # Provider annotations are ingested as reported alerts, not independent proof.
+  - id: R200
+    name: 'Upstream EDR report: PowerShell execution (provider annotation)'
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    prefilter: 'event="reported_alert"'
+    match: 'event="reported_alert".* reported_action="suspicious_process_execution" reported_techniques="(?:[^"]*,)?T1059\.001(?:,[^"]*)?"'
+    technique: T1059.001
+    technique_name: PowerShell
+    tactic: Execution
+    weight: 7
+  - id: R201
+    name: 'Upstream EDR report: application beaconing (provider annotation)'
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    prefilter: 'event="reported_alert"'
+    match: 'event="reported_alert".* reported_action="suspicious_network_connection" reported_techniques="(?:[^"]*,)?T1071\.001(?:,[^"]*)?"'
+    technique: T1071.001
+    technique_name: Web Protocols
+    tactic: Command and Control
+    weight: 7
+  - id: R202
+    name: 'Upstream EDR report: brute force (provider annotation)'
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    prefilter: 'event="reported_alert"'
+    match: 'event="reported_alert".* reported_action="multiple_failed_logins" reported_techniques="(?:[^"]*,)?T1110(?:,[^"]*)?"'
+    technique: T1110
+    technique_name: Brute Force
+    tactic: Credential Access
+    weight: 5
+  - id: R203
+    name: 'Upstream EDR report: registry persistence (provider annotation)'
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    prefilter: 'event="reported_alert"'
+    match: 'event="reported_alert".* reported_action="registry_persistence" reported_techniques="(?:[^"]*,)?T1547\.001(?:,[^"]*)?"'
+    technique: T1547.001
+    technique_name: Registry Run Keys / Startup Folder
+    tactic: Persistence
+    weight: 7
+  - id: R204
+    name: 'Upstream EDR report: file encryption activity (provider annotation)'
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    prefilter: 'event="reported_alert"'
+    match: 'event="reported_alert".* reported_action="mass_file_rename" reported_techniques="(?:[^"]*,)?T1486(?:,[^"]*)?"'
+    technique: T1486
+    technique_name: Data Encrypted for Impact
+    tactic: Impact
+    weight: 9
   # ---- Firewall admin login attacks (type=event subtype=system) ----
   - id: R001
     name: Admin brute force on a valid account
@@ -38,12 +95,12 @@ rules:
     weight: 6
 
   - id: R002
-    name: Distributed password spraying (one /24, many usernames)
+    name: Password spraying (many usernames from one source IP)
     type: distinct_threshold
-    seen_in_sample: true           # 45.74.28.0/24 etc. each try 1 name from a different last octet
+    seen_in_sample: false          # Per-IP variant; distributed /24 behavior remains R004.
     prefilter: 'logdesc="Admin login failed"'
     match: 'logdesc="Admin login failed" user="(?P<user>[^"]*)" ui="[^"]*" method="\w+" srcip=(?P<src_ip>[\d.]+) srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+)'
-    group_by: [src_net24, dst_ip]
+    group_by: [src_ip]
     distinct: user
     count: 10
     window: 300
@@ -109,8 +166,8 @@ rules:
     type: match
     seen_in_sample: false
     prefilter: 'type="traffic"'
-    match: 'srcip=(?P<src_ip>10\.[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>10\.[\d.]+) dstport=(?P<dst_port>\d+)'
-    where: {dst_port: "eq:3389"}
+    match: 'srcip=(?P<src_ip>[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+)'
+    where: {src_ip: is_private, dst_ip: is_private, dst_port: "eq:3389"}
     technique: T1021.001
     technique_name: Remote Desktop Protocol
     tactic: Lateral Movement
@@ -121,8 +178,8 @@ rules:
     type: match
     seen_in_sample: false
     prefilter: 'type="traffic"'
-    match: 'srcip=(?P<src_ip>10\.[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>10\.[\d.]+) dstport=(?P<dst_port>\d+)'
-    where: {dst_port: "in:445,139"}
+    match: 'srcip=(?P<src_ip>[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+)'
+    where: {src_ip: is_private, dst_ip: is_private, dst_port: "in:445,139"}
     technique: T1021.002
     technique_name: SMB/Windows Admin Shares
     tactic: Lateral Movement
@@ -133,8 +190,8 @@ rules:
     type: match
     seen_in_sample: false
     prefilter: 'type="traffic"'
-    match: 'srcip=(?P<src_ip>10\.[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>10\.[\d.]+) dstport=(?P<dst_port>\d+)'
-    where: {dst_port: "eq:22"}
+    match: 'srcip=(?P<src_ip>[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+)'
+    where: {src_ip: is_private, dst_ip: is_private, dst_port: "eq:22"}
     technique: T1021.004
     technique_name: SSH
     tactic: Lateral Movement
@@ -142,12 +199,12 @@ rules:
 
   # sentbyte >= 100 MB (9+ digits). Sample background max is ~8.5 MB; re-tune from profile.py percentiles.
   - id: R040
-    name: Large outbound transfer to external IP
+    name: Potential exfiltration - large outbound transfer to external IP
     type: match
     seen_in_sample: false
     prefilter: 'sentbyte='
-    match: 'srcip=(?P<src_ip>10\.[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+) .*?sentbyte=(?P<sentbyte>\d{9,})'
-    where: {dst_ip: not_private}
+    match: 'srcip=(?P<src_ip>[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+) .*?action="(?P<action>[^"]+)".*?sentbyte=(?P<bytes>\d{9,})'
+    where: {src_ip: is_private, dst_ip: not_private, bytes: ">99999999", action: "in:accept,close,client-rst,server-rst"}
     technique: T1041
     technique_name: Exfiltration Over C2 Channel
     tactic: Exfiltration
@@ -155,7 +212,7 @@ rules:
 
   # ---- DNS (type=utm subtype=dns) ----
   - id: R050
-    name: Repeated DNS lookups of one domain (beaconing)
+    name: Repeated DNS lookups of one domain (frequency heuristic)
     type: threshold
     seen_in_sample: false
     prefilter: 'subtype="dns"'
@@ -214,3 +271,316 @@ rules:
     technique_name: Spearphishing Link
     tactic: Initial Access
     weight: 2
+
+  # Endpoint telemetry and requested behavioral coverage.
+  - id: R004
+    name: Distributed password spraying across one source /24
+    type: distinct_threshold
+    seen_in_sample: true
+    prefilter: logdesc="Admin login failed"
+    match: logdesc="Admin login failed" user="(?P<user>[^"]*)" ui="[^"]*" method="\w+" srcip=(?P<src_ip>[\d.]+) srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+)
+    group_by:
+    - src_net24
+    - dst_ip
+    distinct: user
+    count: 10
+    window: 300
+    technique: T1110.003
+    technique_name: Password Spraying
+    tactic: Credential Access
+    weight: 3
+  - id: R011
+    name: Successful firewall admin login from internal host
+    type: match
+    seen_in_sample: false
+    prefilter: logdesc="Admin login successful"
+    match: logdesc="Admin login successful" user="(?P<user>[^"]*)" ui="[^"]*" method="\w+" srcip=(?P<src_ip>[\d.]+) srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+)
+    where:
+      src_ip: is_private
+    technique: T1021
+    technique_name: Remote Services
+    tactic: Lateral Movement
+    weight: 7
+  - id: R101
+    name: Password guessing against one account
+    type: threshold
+    source: endpoint
+    seen_in_sample: false
+    match: event="login_failure"
+    technique: T1110.001
+    technique_name: Password Guessing
+    tactic: Credential Access
+    weight: 5
+    group_by:
+    - user
+    - src_ip
+    count: 20
+    window: 300
+    where:
+      user: 'ne:'
+      src_ip: 'ne:'
+  - id: R102
+    name: Password spraying from one source IP
+    type: distinct_threshold
+    source: endpoint
+    seen_in_sample: false
+    match: event="login_failure"
+    technique: T1110.003
+    technique_name: Password Spraying
+    tactic: Credential Access
+    weight: 5
+    group_by:
+    - src_ip
+    distinct: user
+    count: 10
+    window: 300
+    where:
+      user: 'ne:'
+      src_ip: 'ne:'
+  - id: R110
+    name: Successful login from external IP
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="login_success"
+    technique: T1078
+    technique_name: Valid Accounts
+    tactic: Initial Access
+    weight: 7
+    where:
+      src_ip: not_private
+      status: eq:success
+  - id: R111
+    name: Successful remote login from internal host
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="login_success"
+    technique: T1021
+    technique_name: Remote Services
+    tactic: Lateral Movement
+    weight: 5
+    where:
+      src_ip: is_private
+      remote: eq:true
+      status: eq:success
+  - id: R120
+    name: Network service discovery across distinct destination ports
+    type: distinct_threshold
+    source: endpoint
+    seen_in_sample: false
+    match: event="flow"
+    technique: T1046
+    technique_name: Network Service Discovery
+    tactic: Discovery
+    weight: 5
+    group_by:
+    - src_ip
+    - dst_ip
+    distinct: dst_port
+    count: 15
+    window: 60
+    where:
+      src_ip: 'ne:'
+      dst_ip: 'ne:'
+      dst_port: '>0'
+  - id: R130
+    name: Local account creation recorded by endpoint
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="account_create"
+    technique: T1136.001
+    technique_name: Local Account
+    tactic: Persistence
+    weight: 7
+    where:
+      status: eq:success
+      account_scope: eq:local
+  - id: R131
+    name: Local account creation command observed
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="process".* command_kind="account_create"
+    technique: T1136.001
+    technique_name: Local Account
+    tactic: Persistence
+    weight: 6
+    where:
+      status: eq:success
+  - id: R140
+    name: Sudo command targeting root observed
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: sudo_root="true"
+    technique: T1548.003
+    technique_name: Sudo and Sudo Caching
+    tactic: Privilege Escalation
+    weight: 5
+    where:
+      status: eq:success
+  - id: R141
+    name: Special privileges assigned at Windows logon (review context)
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="privileged_logon"
+    technique: T1078
+    technique_name: Valid Accounts
+    tactic: Privilege Escalation
+    weight: 2
+  - id: R150
+    name: Archive creation command observed
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="process".* command_kind="archive"
+    technique: T1560
+    technique_name: Archive Collected Data
+    tactic: Collection
+    weight: 5
+    where:
+      status: eq:success
+  - id: R160
+    name: Potential exfiltration - large outbound transfer
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="flow"
+    technique: T1041
+    technique_name: Exfiltration Over C2 Channel
+    tactic: Exfiltration
+    weight: 9
+    where:
+      src_ip: is_private
+      dst_ip: not_private
+      bytes: '>99999999'
+      status: in:success,accept,allow
+  - id: R170
+    name: Periodic small outbound application traffic (possible beacon)
+    type: periodic
+    source: endpoint
+    seen_in_sample: false
+    match: event="flow".* bytes="(?P<small_bytes>\d+)"
+    technique: T1071
+    technique_name: Application Layer Protocol
+    tactic: Command and Control
+    weight: 5
+    group_by:
+    - src_ip
+    - dst_ip
+    - dst_port
+    - protocol
+    count: 10
+    window: 3600
+    min_interval: 5
+    max_interval: 600
+    max_jitter: 0.2
+    where:
+      src_ip: is_private
+      dst_ip: not_private
+      bytes: '>0'
+      dst_port: '>0'
+      protocol: in:http,https,dns
+      status: in:success,accept,allow
+      small_bytes: <4097
+  - id: R180
+    name: Windows audit log cleared
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="log_clear"
+    technique: T1070.001
+    technique_name: Clear Windows Event Logs
+    tactic: Defense Evasion
+    weight: 7
+  - id: R181
+    name: Shell history cleared
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="process".* command_kind="history_clear"
+    technique: T1070.003
+    technique_name: Clear Command History
+    tactic: Defense Evasion
+    weight: 6
+    where:
+      status: eq:success
+  - id: R182
+    name: Event log clear command observed
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="process".* command_kind="windows_log_clear"
+    technique: T1070.001
+    technique_name: Clear Windows Event Logs
+    tactic: Defense Evasion
+    weight: 7
+    where:
+      status: eq:success
+  - id: R052
+    name: Periodic small outbound HTTP HTTPS or DNS flows (possible beacon)
+    type: periodic
+    source: fortigate
+    seen_in_sample: false
+    match: srcip=(?P<src_ip>[\d.]+) srcport=\d+ srcintf="[^"]*" srcintfrole="[^"]*" dstip=(?P<dst_ip>[\d.]+) dstport=(?P<dst_port>\d+) .*?action="(?P<action>[^"]+)".*?sentbyte=(?P<bytes>[1-9]\d*)
+    technique: T1071
+    technique_name: Application Layer Protocol
+    tactic: Command and Control
+    weight: 5
+    prefilter: type="traffic"
+    group_by:
+    - src_ip
+    - dst_ip
+    - dst_port
+    count: 10
+    window: 3600
+    min_interval: 5
+    max_interval: 600
+    max_jitter: 0.2
+    where:
+      src_ip: is_private
+      dst_ip: not_private
+      bytes: <4097
+      dst_port: in:80,443,53
+      action: in:accept,close,client-rst,server-rst
+  - id: R183
+    name: Linux log removal or vacuum command observed
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="process".* command_kind="linux_log_clear"
+    technique: T1070.002
+    technique_name: Clear Linux or Mac System Logs
+    tactic: Defense Evasion
+    weight: 6
+    where:
+      status: eq:success
+  - id: R132
+    name: Account creation with unresolved local or domain scope
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="account_create"
+    technique: T1136
+    technique_name: Create Account
+    tactic: Persistence
+    weight: 6
+    where:
+      account_scope: eq:unknown
+      status: eq:success
+  - id: R133
+    name: Domain account creation recorded by endpoint
+    type: match
+    source: endpoint
+    seen_in_sample: false
+    match: event="account_create"
+    technique: T1136.002
+    technique_name: Domain Account
+    tactic: Persistence
+    weight: 6
+    where:
+      account_scope: eq:domain
+      status: eq:success
