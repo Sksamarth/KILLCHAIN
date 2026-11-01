@@ -1,0 +1,27 @@
+﻿{
+    "nodes":  479,
+    "total_nodes":  479,
+    "edges":  453,
+    "total_edges":  453,
+    "limited":  false,
+    "totals":  {
+                   "detections":  1003,
+                   "matching_events":  1040109,
+                   "incidents":  295,
+                   "hosts":  0,
+                   "accounts":  258,
+                   "impact_signals":  0,
+                   "provider_reports":  0,
+                   "first":  1792745335,
+                   "last":  1793350105,
+                   "assets":  98
+               },
+    "summary_ms":  3131,
+    "edge_detections":  216,
+    "detail_detections":  216,
+    "detail_assets":  1,
+    "detail_techniques":  1,
+    "detail_incidents":  12,
+    "detail_evidence":  8,
+    "remaining_assets":  null
+}

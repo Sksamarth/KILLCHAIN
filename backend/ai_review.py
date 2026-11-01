@@ -41,7 +41,7 @@ class ReviewError(Exception):
 
 def status():
     return dict(configured=bool(os.environ.get('GEMINI_API_KEY')),provider='Gemini',
-        model=os.environ.get('GEMINI_MODEL','gemini-2.5-flash-lite'),max_metadata_bytes=MAX_PAYLOAD_BYTES,
+        model=os.environ.get('GEMINI_MODEL','gemini-3.5-flash-lite'),max_metadata_bytes=MAX_PAYLOAD_BYTES,
         notice='AI suggestion, not measured accuracy. Google free-tier content may be used to improve products. Sends <=12 KB pseudonymized detection metadata, never raw logs.')
 
 

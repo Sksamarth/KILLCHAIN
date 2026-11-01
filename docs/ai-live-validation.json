@@ -1,0 +1,11 @@
+﻿{
+    "provider":  "Gemini",
+    "model":  "gemini-3.5-flash-lite",
+    "configured":  true,
+    "cached":  true,
+    "metadata_bytes":  4355,
+    "assessment":  "suspicious",
+    "findings":  2,
+    "scope":  "One live review plus cached repeat; schema and citations validated; not independent accuracy validation",
+    "raw_logs_sent":  false
+}

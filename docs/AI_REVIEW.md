@@ -1,6 +1,6 @@
 # Optional AI review and independent validation
 
-Gemini review is an optional second opinion on an incident. It never modifies rules, correlations, labels, risk, suppression or accuracy metrics. The original deterministic report remains available when the provider fails or no key is configured. No live provider call has been certified until a real API key is configured and a response is validated.
+Gemini review is an optional second opinion on an incident. It never modifies rules, correlations, labels, risk, suppression or accuracy metrics. The original deterministic report remains available when the provider fails or no key is configured. A live review and cached repeat have now passed: 4,355 bytes of pseudonymized metadata, schema-validated output and valid evidence citations. This does not certify the model's conclusions or detection accuracy. See [ai-live-validation.json](ai-live-validation.json).
 
 ## Configure a free-tier key
 
@@ -8,7 +8,7 @@ Create your own key in [Google AI Studio](https://aistudio.google.com/apikey), u
 
 ```dotenv
 GEMINI_API_KEY=your_private_key_here
-GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 Then run `docker compose up --build -d backend`. Open an incident and select **Review with Gemini**. `/api/ai/status` reports configuration without returning credentials. This key is separate from the optional `API_TOKEN` used to restrict access to the local analysis API.
@@ -30,5 +30,7 @@ Run `python -m backend.validation --output tmp/validation-701 --seed 701`. It wr
 The two campaigns exercise all eleven requested behavior families. Background commands include benign lookalikes and repeated single-port flows. A contextual hard negative models a legitimate archive and large backup transfer. That legitimate business purpose exists in ground truth; it is deliberately not secretly added to detector allowlists.
 
 Initial seed 701: detection 100%, exact technique labels 100%, both ordered paths rebuilt, no merged attacks, but **one of three active incidents is a false alarm (33.33%)**. Two of 2,202 benign records contributed to that incident (0.091%). These are different denominators; the low event-level percentage does not satisfy the incident-level false-alarm target. The accuracy gate correctly fails. This is small synthetic validation, not a real-data accuracy claim or 15/50 GB release pass.
+
+Seed 809 varied the background telemetry and reproduced the same metrics; it is not an independent attack-family holdout. Results for both runs are retained in [scenario-validation-results.json](scenario-validation-results.json). All 119 local and container tests passed; mocked provider tests cover caching, citation checks, malformed output, timeout, quota, payload limits, redaction and API behavior. Ten focused tests passed after switching the default model to Gemini 3.5 Flash-Lite. The former 2.5 Flash-Lite model was rejected by Google for new users; 3.5 Flash-Lite succeeded with the configured credential. The key remains only in ignored local configuration and the backend environment.
 
 Next work is environment-supported backup/administration context and independently reviewed validation cases, without globally excluding archive creation or large outbound traffic. Hold out additional scenarios before tuning. AI can suggest which context to investigate; measured metrics continue to come from truth and raw evidence, not AI verdicts.

@@ -2,7 +2,7 @@
 
 Deterministic firewall and endpoint log analysis: streaming detection, ATT&CK labels, incident correlation, attack graphs, evidence locations, reports and a dark analyst dashboard. See [detection coverage and accepted formats](docs/DETECTIONS.md) for all eleven requested behaviors.
 
-**Status: functional development build. Production readiness and the PRD's 50 GB accuracy/performance gates are not certified.** Docker startup, nginx/API routing and all 95 container tests have been verified. Performance measurements retain their native or Docker scope; see [VALIDATION.md](docs/VALIDATION.md) and [REQUIREMENTS.md](docs/REQUIREMENTS.md).
+**Status: functional development build. Production readiness and the PRD's 50 GB accuracy/performance gates are not certified.** Docker startup, nginx/API routing and all 119 local and container tests have been verified. Performance measurements retain their native or Docker scope; see [VALIDATION.md](docs/VALIDATION.md) and [REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ## Run with Docker
 
@@ -48,6 +48,10 @@ Edit `rules/detect.yaml`, `sequence.yaml`, `correlate.yaml` or `report.yaml` and
 The engine supports match, threshold, distinct-threshold and periodic timing rules, named regex captures, explicit private-IP conditions, time windows and configurable grouping. Detection thresholds operate across files and chunks. Every reduced detection retains its representative source file/offset and a separate evidence relation for every contributing candidate line. Raw-event counts are matching-event counts per detection; a line matching multiple rules can contribute multiple matches.
 
 ## API
+
+The [home-page overview graph](docs/HOME_GRAPH.md) combines all scoped incidents into one interactive evidence map, with node/edge detail panels, related incident links, impact-signal counts, Find/zoom/pan/fullscreen and optional activity animation. Remaining unaffected assets and confirmed exploitation stay unknown until independent evidence and inventory support those claims.
+
+The [incident evidence explorer](docs/GRAPH.md) provides grouped connections, zoom/pan, node and link inspection, time/stage filters, fullscreen, SVG export and full-incident metrics. Run its checks with `node --test tests/test_graph.cjs` when Node is available; Node is not required to run the application.
 
 The nginx `/api/` prefix is stripped before forwarding to FastAPI:
 

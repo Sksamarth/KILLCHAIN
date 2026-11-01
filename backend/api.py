@@ -74,6 +74,20 @@ def stats():
     return value
 
 
+@app.get('/overview/graph')
+def overview_graph(status: str=Query('active',pattern='^(active|suppressed|all)$'),stage: int|None=Query(None,ge=0,le=4)):
+    from backend.overview_graph import summary
+    with connect() as db:return summary(db,status,stage)
+
+
+@app.get('/overview/graph/details')
+def overview_graph_details(node: str|None=Query(None,max_length=1024),source: str|None=Query(None,max_length=1024),target: str|None=Query(None,max_length=1024),relation: str|None=Query(None,pattern='^(source|destination|account|network)$'),status: str=Query('active',pattern='^(active|suppressed|all)$'),stage: int|None=Query(None,ge=0,le=4)):
+    if not (node and not any((source,target,relation))) and not (not node and all((source,target,relation))):
+        raise HTTPException(422,'Specify either one node or a complete source/target/relation edge')
+    from backend.overview_graph import details
+    with connect() as db:return details(db,node,source,target,relation,status,stage)
+
+
 @app.get('/incidents')
 def incidents(status: str = Query('active',pattern='^(active|suppressed|all)$'),offset: int = Query(0,ge=0),limit: int = Query(50,ge=1,le=500),search: str=Query('',max_length=200)):
     search=search.strip()
