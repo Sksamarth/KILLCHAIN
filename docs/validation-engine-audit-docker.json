@@ -1,0 +1,87 @@
+﻿{
+  "engine_checks_passed": true,
+  "scope": "Small synthetic fixture in an isolated database and temporary localhost API. Live dashboard data unchanged; not real-data accuracy or scale certification.",
+  "seed": 701,
+  "background_records": 80,
+  "comparisons": {
+    "detection": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "labels": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "parent_labels": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "stages": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "stage_coverage": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "attack_paths": {
+      "direct": 1.0,
+      "http": 1.0,
+      "matches": true
+    },
+    "false_alarms": {
+      "direct": 0.3333333333333333,
+      "http": 0.3333333333333333,
+      "matches": true
+    },
+    "merged_incidents": {
+      "direct": 0,
+      "http": 0,
+      "matches": true
+    },
+    "exact_membership_checked": {
+      "direct": true,
+      "http": true,
+      "matches": true
+    },
+    "known_benign_incidents": {
+      "direct": 1,
+      "http": 1,
+      "matches": true
+    },
+    "unmatched_detections": {
+      "direct": 2,
+      "http": 2,
+      "matches": true
+    }
+  },
+  "http_exit_code": 1,
+  "scenario_accuracy_gate": "FAIL",
+  "release_gate": "FAIL OR UNVERIFIED",
+  "accuracy_scope": "SYNTHETIC SCENARIO ONLY",
+  "source_sha256": "f9c2013449ba83a7ee68305734f345bba42e3df4b6ce2130095efa9d6f19f310",
+  "http_p95_ms": 31.379361000290373,
+  "benign_failures": [
+    {
+      "file": "scenarios.jsonl",
+      "offset": 16158,
+      "case": "authorized_backup",
+      "alert_ids": [
+        "43ec7e2f7a68e224a1c1d773"
+      ]
+    },
+    {
+      "file": "scenarios.jsonl",
+      "offset": 16429,
+      "case": "authorized_backup",
+      "alert_ids": [
+        "3951c627579366dc43ce9230"
+      ]
+    }
+  ]
+}

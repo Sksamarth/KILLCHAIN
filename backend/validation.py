@@ -14,6 +14,9 @@ from backend.scanner import run
 from backend.store import connect,records
 
 BASE=1792745306
+# Authored expected display stages, independent of runtime YAML mappings.
+EXPECTED_STAGES={'T1110.001':0,'T1110.003':0,'T1078':0,'T1136.001':1,
+                 'T1548.003':3,'T1046':2,'T1021':3,'T1560':2,'T1041':4,'T1070.003':1,'T1071':1}
 
 
 def generate(folder,seed=701,background=2000):
@@ -56,10 +59,10 @@ def generate(folder,seed=701,background=2000):
         for value,technique,attack,case in rows:
             offset=handle.tell();handle.write((json.dumps(value,sort_keys=True)+'\n').encode())
             reference=dict(file=file.name,offset=offset)
-            if technique:by_attack.setdefault(attack,[]).append(dict(**reference,technique=technique))
+            if technique:by_attack.setdefault(attack,[]).append(dict(**reference,technique=technique,stage=EXPECTED_STAGES[technique]))
             if case:benign.append(dict(**reference,case=case))
     attacks=[dict(id=key,steps=value) for key,value in by_attack.items()]
-    truth=dict(schema_version=1,synthetic=True,seed=seed,attacks=attacks,benign=benign,
+    truth=dict(schema_version=1,synthetic=True,exhaustive_steps=True,seed=seed,attacks=attacks,benign=benign,
                source_sha256=hashlib.sha256(file.read_bytes()).hexdigest(),
                provenance='Fixed authored scenarios; expected techniques and byte offsets saved before running the detector. No AI/provider-derived truth.')
     (folder/'truth.json').write_text(json.dumps(truth,indent=2),encoding='utf8')
@@ -84,7 +87,7 @@ def validate(folder,seed=701,background=2000):
         benign_records=len(benign_hits),benign_records_in_active_incidents=len(failures),
         benign_record_false_positive_rate=len(failures)/len(benign_hits) if benign_hits else None,
         benign_failures=failures,
-        accuracy_gate='PASS' if result['detection'] and result['detection']>.9 and result['labels']>.85 and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.1 else 'FAIL')
+        accuracy_gate='PASS' if result['detection'] and result['detection']>.9 and result['labels']>.85 and result['stages']==1 and result['exact_membership_checked'] and result['attack_paths']==1 and result['false_alarms'] is not None and result['false_alarms']<.1 else 'FAIL')
     (folder/'results.json').write_text(json.dumps(result,indent=2),encoding='utf8')
     return result
 
